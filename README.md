@@ -49,13 +49,13 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 3. **Make the manager script executable**
 
    ```bash
-   chmod +x manage_chat.sh
+   chmod +x chat-manager.sh
    ```
 
 4. **Start the application**
 
    ```bash
-   ./manage_chat.sh start
+   ./chat-manager.sh start
    ```
 
 5. **Access the web interface**
@@ -80,28 +80,28 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 source bin/activate
 
 # Start the application (default port 3000)
-./manage_chat.sh start
+./chat-manager.sh start
 
 # Start on custom port
-./manage_chat.sh start 8080
+./chat-manager.sh start 8080
 
 # Check if running
-./manage_chat.sh status
+./chat-manager.sh status
 
 # Stop the application gracefully
-./manage_chat.sh stop
+./chat-manager.sh stop
 
 # Force kill all processes (if normal stop doesn't work)
-./manage_chat.sh force-stop
+./chat-manager.sh force-stop
 
 # Restart the application
-./manage_chat.sh restart
+./chat-manager.sh restart
 
 # View live logs
-./manage_chat.sh logs
+./chat-manager.sh logs
 
 # Show help
-./manage_chat.sh help
+./chat-manager.sh help
 ```
 
 ### First Time Setup
@@ -132,7 +132,7 @@ source bin/activate
    pip install -r requirements.txt
 
    # Start the application
-   ./manage_chat.sh start
+   ./chat-manager.sh start
    ```
 
 4. **Create your first conversation**
@@ -173,7 +173,7 @@ export OLLAMA_API_URL="http://192.168.1.100:11434"
 export DATABASE_PATH="/path/to/your/database.db"
 
 # Start with environment variables
-PORT=8080 ./manage_chat.sh start
+PORT=8080 ./chat-manager.sh start
 ```
 
 ## 📁 Project Structure
@@ -181,7 +181,7 @@ PORT=8080 ./manage_chat.sh start
 ```
 chat-o-llama/
 ├── README.md              # This file
-├── manage_chat.sh         # Process manager script
+├── chat-manager.sh         # Process manager script
 ├── app.py                 # Main Flask application
 ├── requirements.txt       # Python dependencies
 ├── templates/
@@ -245,7 +245,7 @@ If running on older hardware or limited resources:
 
 3. **Monitor resource usage**
    ```bash
-   ./manage_chat.sh logs    # Check application logs
+   ./chat-manager.sh logs    # Check application logs
    htop                     # Monitor system resources
    ```
 
@@ -265,14 +265,14 @@ CREATE INDEX idx_conversations_updated ON conversations(updated_at DESC);
 
 | Issue | Solution |
 |-------|----------|
-| Port already in use | Use `./manage_chat.sh start 8080` to use different port |
+| Port already in use | Use `./chat-manager.sh start 8080` to use different port |
 | Virtual environment not activated | Run `source bin/activate` first |
-| Process won't stop | Try `./manage_chat.sh force-stop` |
+| Process won't stop | Try `./chat-manager.sh force-stop` |
 | Ollama not responding | Check if Ollama is running: `curl http://localhost:11434/api/tags` |
 | No models available | Download models: `ollama pull phi3:mini` |
-| Permission denied | Make script executable: `chmod +x manage_chat.sh` |
+| Permission denied | Make script executable: `chmod +x chat-manager.sh` |
 | Flask not found | Install requirements: `pip install flask requests` |
-| Database locked | Stop the application: `./manage_chat.sh stop` |
+| Database locked | Stop the application: `./chat-manager.sh stop` |
 
 ### Debug Mode
 
@@ -282,24 +282,24 @@ source bin/activate
 
 # Enable debug mode
 export DEBUG=true
-./manage_chat.sh start
+./chat-manager.sh start
 
 # View detailed logs
-./manage_chat.sh logs
+./chat-manager.sh logs
 ```
 
 ### Reset Database
 
 ```bash
 # Stop the application and activate venv
-./manage_chat.sh stop
+./chat-manager.sh stop
 source bin/activate
 
 # Remove database file
 rm -f data/chat-o-llama.db
 
 # Restart (will create new database)
-./manage_chat.sh start
+./chat-manager.sh start
 ```
 
 ## 📊 Monitoring
@@ -311,10 +311,10 @@ rm -f data/chat-o-llama.db
 source bin/activate
 
 # Quick status check
-./manage_chat.sh status
+./chat-manager.sh status
 
 # Live log monitoring
-./manage_chat.sh logs
+./chat-manager.sh logs
 
 # System resource usage
 htop
@@ -346,7 +346,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
    ```bash
    cd chat-o-llama
    source bin/activate
-   ./manage_chat.sh start
+   ./chat-manager.sh start
    ```
 6. Submit a pull request
 
