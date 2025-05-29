@@ -42,7 +42,7 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
    ```bash
    python3 -m venv chat-o-llama
    cd chat-o-llama
-   source venv/bin/activate
+   source bin/activate
    pip install -r requirements.txt
    ```
 
@@ -77,7 +77,7 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 
 ```bash
 # IMPORTANT: Always activate virtual environment first
-source venv/bin/activate
+source bin/activate
 
 # Start the application (default port 3000)
 ./manage_chat.sh start
@@ -266,7 +266,7 @@ CREATE INDEX idx_conversations_updated ON conversations(updated_at DESC);
 | Issue | Solution |
 |-------|----------|
 | Port already in use | Use `./manage_chat.sh start 8080` to use different port |
-| Virtual environment not activated | Run `source venv/bin/activate` first |
+| Virtual environment not activated | Run `source bin/activate` first |
 | Process won't stop | Try `./manage_chat.sh force-stop` |
 | Ollama not responding | Check if Ollama is running: `curl http://localhost:11434/api/tags` |
 | No models available | Download models: `ollama pull phi3:mini` |
@@ -278,7 +278,7 @@ CREATE INDEX idx_conversations_updated ON conversations(updated_at DESC);
 
 ```bash
 # Activate virtual environment
-source venv/bin/activate
+source bin/activate
 
 # Enable debug mode
 export DEBUG=true
@@ -293,7 +293,7 @@ export DEBUG=true
 ```bash
 # Stop the application and activate venv
 ./manage_chat.sh stop
-source venv/bin/activate
+source bin/activate
 
 # Remove database file
 rm -f data/chat-o-llama.db
@@ -308,7 +308,7 @@ rm -f data/chat-o-llama.db
 
 ```bash
 # Activate venv first
-source venv/bin/activate
+source bin/activate
 
 # Quick status check
 ./manage_chat.sh status
