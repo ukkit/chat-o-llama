@@ -6,7 +6,7 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 
 ## ✨ Features
 
-- 💬 **Multiple Conversations** - Create and manage separate chat sessions
+- 💬 **Multiple Conversations** - Create and manage separate chat sessions / rename chat sessions
 - 📚 **Persistent History** - All conversations stored locally in SQLite database
 - 🔍 **Search Functionality** - Find messages across all conversations
 - 🤖 **Model Selection** - Choose from available Ollama models

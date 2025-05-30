@@ -21,7 +21,7 @@ app.config['SECRET_KEY'] = 'your-secret-key-change-this'
 
 # Configuration
 OLLAMA_API_URL = os.getenv('OLLAMA_API_URL', 'http://localhost:11434')
-DATABASE_PATH = os.getenv('DATABASE_PATH', 'chat-o-llama.db')
+DATABASE_PATH = os.getenv('DATABASE_PATH', 'ollama_chat.db')
 
 # Database schema
 SCHEMA = '''
@@ -47,7 +47,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC);
 '''
 
-
 def get_db():
     """Get database connection."""
     if 'db' not in g:
@@ -55,13 +54,11 @@ def get_db():
         g.db.row_factory = sqlite3.Row
     return g.db
 
-
 def close_db(error):
     """Close database connection."""
     db = g.pop('db', None)
     if db is not None:
         db.close()
-
 
 def init_db():
     """Initialize database with schema."""
@@ -70,11 +67,9 @@ def init_db():
         conn.commit()
     logger.info(f"Database initialized: {DATABASE_PATH}")
 
-
 @app.teardown_appcontext
 def close_db_on_teardown(error):
     close_db(error)
-
 
 class OllamaAPI:
     """Ollama API client."""
@@ -83,13 +78,28 @@ class OllamaAPI:
     def get_models():
         """Get available models from Ollama."""
         try:
-            response = requests.get(f"{OLLAMA_API_URL}/api/tags", timeout=5)
+            print(f"Attempting to fetch models from {OLLAMA_API_URL}/api/tags")
+            response = requests.get(f"{OLLAMA_API_URL}/api/tags", timeout=10)
+
             if response.status_code == 200:
                 data = response.json()
-                return [model['name'] for model in data.get('models', [])]
+                models = data.get('models', [])
+                model_names = [model['name'] for model in models if 'name' in model]
+                print(f"Successfully fetched {len(model_names)} models: {model_names}")
+                return model_names
+            else:
+                print(f"Ollama API returned status {response.status_code}: {response.text}")
+                return []
+
+        except requests.exceptions.ConnectionError as e:
+            print(f"Connection error to Ollama: {e}")
+            print("Make sure Ollama is running with: ollama serve")
+            return []
+        except requests.exceptions.Timeout as e:
+            print(f"Timeout connecting to Ollama: {e}")
             return []
         except Exception as e:
-            logger.error(f"Error fetching models: {e}")
+            print(f"Unexpected error fetching models: {e}")
             return []
 
     @staticmethod
@@ -99,8 +109,7 @@ class OllamaAPI:
             # Build context from conversation history
             context = ""
             if conversation_history:
-                # Last 10 messages for context
-                for msg in conversation_history[-10:]:
+                for msg in conversation_history[-10:]:  # Last 10 messages for context
                     role = "Human" if msg['role'] == 'user' else "Assistant"
                     context += f"{role}: {msg['content']}\n"
 
@@ -135,7 +144,6 @@ class OllamaAPI:
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
             return f"Unexpected error: {str(e)}"
-
 
 class ConversationManager:
     """Manage conversations and messages."""
@@ -182,8 +190,7 @@ class ConversationManager:
     def delete_conversation(conversation_id):
         """Delete conversation and all messages."""
         db = get_db()
-        db.execute('DELETE FROM conversations WHERE id = ?',
-                   (conversation_id,))
+        db.execute('DELETE FROM conversations WHERE id = ?', (conversation_id,))
         db.commit()
 
     @staticmethod
@@ -207,20 +214,29 @@ class ConversationManager:
         ).fetchall()
 
 # Routes
-
-
 @app.route('/')
 def index():
     """Main chat interface."""
     return render_template('index.html')
 
-
 @app.route('/api/models')
 def api_models():
     """Get available models."""
-    models = OllamaAPI.get_models()
-    return jsonify({'models': models})
-
+    try:
+        models = OllamaAPI.get_models()
+        return jsonify({
+            'models': models,
+            'count': len(models),
+            'ollama_url': OLLAMA_API_URL
+        })
+    except Exception as e:
+        logger.error(f"Error in /api/models endpoint: {e}")
+        return jsonify({
+            'models': [],
+            'count': 0,
+            'error': str(e),
+            'ollama_url': OLLAMA_API_URL
+        }), 500
 
 @app.route('/api/conversations')
 def api_conversations():
@@ -229,7 +245,6 @@ def api_conversations():
     return jsonify({
         'conversations': [dict(conv) for conv in conversations]
     })
-
 
 @app.route('/api/conversations', methods=['POST'])
 def api_create_conversation():
@@ -240,7 +255,6 @@ def api_create_conversation():
 
     conv_id = ConversationManager.create_conversation(title, model)
     return jsonify({'conversation_id': conv_id})
-
 
 @app.route('/api/conversations/<int:conversation_id>')
 def api_get_conversation(conversation_id):
@@ -255,13 +269,36 @@ def api_get_conversation(conversation_id):
         'messages': [dict(msg) for msg in messages]
     })
 
-
 @app.route('/api/conversations/<int:conversation_id>', methods=['DELETE'])
 def api_delete_conversation(conversation_id):
     """Delete conversation."""
     ConversationManager.delete_conversation(conversation_id)
     return jsonify({'success': True})
 
+@app.route('/api/conversations/<int:conversation_id>', methods=['PUT'])
+def api_update_conversation(conversation_id):
+    """Update conversation (rename)."""
+    data = request.get_json()
+    new_title = data.get('title', '').strip()
+
+    if not new_title:
+        return jsonify({'error': 'Title cannot be empty'}), 400
+
+    if len(new_title) > 100:
+        return jsonify({'error': 'Title too long (max 100 characters)'}), 400
+
+    # Update the conversation title
+    db = get_db()
+    result = db.execute(
+        'UPDATE conversations SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        (new_title, conversation_id)
+    )
+    db.commit()
+
+    if result.rowcount == 0:
+        return jsonify({'error': 'Conversation not found'}), 404
+
+    return jsonify({'success': True, 'title': new_title})
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
@@ -279,21 +316,18 @@ def api_chat():
 
     # Get conversation history for context
     messages = ConversationManager.get_messages(conversation_id)
-    history = [{'role': msg['role'], 'content': msg['content']}
-               for msg in messages[:-1]]
+    history = [{'role': msg['role'], 'content': msg['content']} for msg in messages[:-1]]
 
     # Generate response
     response = OllamaAPI.generate_response(model, message, history)
 
     # Add assistant response
-    ConversationManager.add_message(
-        conversation_id, 'assistant', response, model)
+    ConversationManager.add_message(conversation_id, 'assistant', response, model)
 
     return jsonify({
         'response': response,
         'model': model
     })
-
 
 @app.route('/api/search')
 def api_search():
@@ -317,7 +351,6 @@ def api_search():
         'results': [dict(result) for result in results]
     })
 
-
 if __name__ == '__main__':
     # Initialize database
     init_db()
@@ -332,6 +365,6 @@ if __name__ == '__main__':
     # Run the app
     app.run(
         host='0.0.0.0',
-        port=int(os.getenv('PORT', 5000)),
+        port=int(os.getenv('PORT', 8080)),  # Changed default from 5000 to 8080
         debug=os.getenv('DEBUG', 'False').lower() == 'true'
     )

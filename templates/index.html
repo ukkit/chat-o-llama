@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat-O-Llama</title>
+    <title>chat-o-llama</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
@@ -12,10 +14,13 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
+            font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+            background-color: #0d1117;
+            color: #e6edf3;
             height: 100vh;
             display: flex;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .sidebar {
@@ -103,18 +108,44 @@
             font-size: 13px;
             margin-bottom: 4px;
             color: #e6edf3;
+            cursor: pointer;
+            word-break: break-word;
         }
 
-        .conversation-meta {
-            font-size: 11px;
-            color: #7d8590;
+        .conversation-title:hover {
+            color: #58a6ff;
         }
 
-        .conversation-delete {
+        .conversation-title-input {
+            font-family: inherit;
+            font-weight: 500;
+            font-size: 13px;
+            margin-bottom: 4px;
+            color: #e6edf3;
+            background: #30363d;
+            border: 1px solid #58a6ff;
+            border-radius: 4px;
+            padding: 2px 6px;
+            width: 100%;
+            outline: none;
+        }
+
+        .conversation-actions {
             position: absolute;
             top: 8px;
             right: 8px;
-            background: #da3633;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .conversation-item:hover .conversation-actions {
+            opacity: 1;
+        }
+
+        .conversation-edit, .conversation-delete {
+            background: #58a6ff;
             color: white;
             border: none;
             border-radius: 3px;
@@ -122,13 +153,27 @@
             height: 20px;
             font-size: 12px;
             cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
             font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .conversation-item:hover .conversation-delete {
-            opacity: 1;
+        .conversation-edit:hover {
+            background: #4184e4;
+        }
+
+        .conversation-delete {
+            background: #da3633;
+        }
+
+        .conversation-delete:hover {
+            background: #b91c1c;
+        }
+
+        .conversation-meta {
+            font-size: 11px;
+            color: #7d8590;
         }
 
         .main-content {
@@ -288,9 +333,9 @@
         }
 
         .search-results {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
             position: absolute;
             top: 100%;
             left: 0;
@@ -303,22 +348,23 @@
 
         .search-result {
             padding: 12px;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #30363d;
             cursor: pointer;
         }
 
         .search-result:hover {
-            background: #f8f9fa;
+            background: #30363d;
         }
 
         .search-result-title {
             font-weight: 500;
             margin-bottom: 4px;
+            color: #e6edf3;
         }
 
         .search-result-content {
-            font-size: 12px;
-            color: #666;
+            font-size: 11px;
+            color: #7d8590;
         }
 
         @media (max-width: 768px) {
@@ -339,6 +385,7 @@
 <body>
     <div class="sidebar">
         <div class="sidebar-header">
+            <div class="app-title">chat-o-llama</div>
             <button class="new-chat-btn" onclick="createNewChat()">+ New Chat</button>
             <select class="model-select" id="modelSelect">
                 <option value="">Loading models...</option>
@@ -360,7 +407,7 @@
 
         <div class="chat-container" id="chatContainer">
             <div class="no-conversation">
-                <h2>Welcome to Chat-O-Llama</h2>
+                <h2>Welcome to chat-o-llama</h2>
                 <p>Create a new chat to get started</p>
             </div>
         </div>
@@ -378,34 +425,95 @@
 
         // Initialize the app
         async function init() {
+            console.log('Initializing chat-o-llama...');
+
+            // Show loading state
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = '<option value="">Loading models...</option>';
+
             await loadModels();
             await loadConversations();
+
+            console.log('Initialization complete');
         }
 
         // Load available models
         async function loadModels() {
             try {
                 const response = await fetch('/api/models');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
-                availableModels = data.models;
+                availableModels = data.models || [];
 
                 const modelSelect = document.getElementById('modelSelect');
                 modelSelect.innerHTML = '';
 
                 if (availableModels.length === 0) {
-                    modelSelect.innerHTML = '<option value="">No models available</option>';
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No models available';
+                    option.disabled = true;
+                    modelSelect.appendChild(option);
+
+                    console.warn('No Ollama models found. Make sure Ollama is running and has models installed.');
                 } else {
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Select a model...';
+                    defaultOption.disabled = true;
+                    modelSelect.appendChild(defaultOption);
+
+                    // Add available models
                     availableModels.forEach(model => {
                         const option = document.createElement('option');
                         option.value = model;
                         option.textContent = model;
                         modelSelect.appendChild(option);
                     });
-                    modelSelect.selectedIndex = 0;
+
+                    // Auto-select first model if available
+                    if (availableModels.length > 0) {
+                        modelSelect.selectedIndex = 1; // Skip the "Select a model..." option
+                    }
+
+                    console.log(`Loaded ${availableModels.length} models:`, availableModels);
                 }
             } catch (error) {
                 console.error('Error loading models:', error);
-                document.getElementById('modelSelect').innerHTML = '<option value="">Error loading models</option>';
+
+                const modelSelect = document.getElementById('modelSelect');
+                modelSelect.innerHTML = '';
+
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Error loading models';
+                option.disabled = true;
+                modelSelect.appendChild(option);
+
+                // Show user-friendly error
+                setTimeout(() => {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = `
+                        position: fixed; top: 20px; right: 20px;
+                        background: #da3633; color: white;
+                        padding: 12px 16px; border-radius: 6px;
+                        font-family: inherit; font-size: 13px;
+                        z-index: 1000; max-width: 300px;
+                    `;
+                    errorDiv.innerHTML = `
+                        <strong>Cannot load models</strong><br>
+                        Make sure Ollama is running and has models installed.<br>
+                        <small>Check console for details.</small>
+                    `;
+                    document.body.appendChild(errorDiv);
+
+                    setTimeout(() => errorDiv.remove(), 5000);
+                }, 100);
             }
         }
 
@@ -426,9 +534,12 @@
                     const date = new Date(conv.updated_at).toLocaleDateString();
 
                     div.innerHTML = `
-                        <div class="conversation-title">${escapeHtml(conv.title)}</div>
+                        <div class="conversation-title" data-conv-id="${conv.id}" onclick="event.stopPropagation();" ondblclick="startRename(${conv.id})">${escapeHtml(conv.title)}</div>
                         <div class="conversation-meta">${conv.model} • ${date}</div>
-                        <button class="conversation-delete" onclick="event.stopPropagation(); deleteConversation(${conv.id})">×</button>
+                        <div class="conversation-actions">
+                            <button class="conversation-edit" onclick="event.stopPropagation(); startRename(${conv.id})" title="Rename">✏</button>
+                            <button class="conversation-delete" onclick="event.stopPropagation(); deleteConversation(${conv.id})" title="Delete">×</button>
+                        </div>
                     `;
 
                     conversationsList.appendChild(div);
@@ -498,6 +609,93 @@
             }
         }
 
+        // Start renaming a conversation
+        function startRename(conversationId) {
+            const titleElement = document.querySelector(`[data-conv-id="${conversationId}"]`);
+            if (!titleElement || titleElement.querySelector('input')) return; // Already editing
+
+            const currentTitle = titleElement.textContent;
+
+            // Create input element
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'conversation-title-input';
+            input.value = currentTitle;
+            input.maxLength = 100;
+
+            // Handle save/cancel
+            const saveRename = async () => {
+                const newTitle = input.value.trim();
+                if (!newTitle) {
+                    cancelRename();
+                    return;
+                }
+
+                if (newTitle === currentTitle) {
+                    cancelRename();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/conversations/${conversationId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: newTitle })
+                    });
+
+                    if (response.ok) {
+                        // Remove input first, then set text content
+                        if (input.parentNode === titleElement) {
+                            titleElement.removeChild(input);
+                        }
+                        titleElement.textContent = newTitle;
+
+                        // Update chat title if this is the current conversation
+                        if (currentConversationId === conversationId) {
+                            document.getElementById('chatTitle').textContent = newTitle;
+                        }
+
+                        // Reload conversations to update order
+                        await loadConversations();
+                    } else {
+                        const error = await response.json();
+                        alert(error.error || 'Failed to rename conversation');
+                        cancelRename();
+                    }
+                } catch (error) {
+                    console.error('Error renaming conversation:', error);
+                    alert('Failed to rename conversation');
+                    cancelRename();
+                }
+            };
+
+            const cancelRename = () => {
+                // Remove input first, then set text content
+                if (input.parentNode === titleElement) {
+                    titleElement.removeChild(input);
+                }
+                titleElement.textContent = currentTitle;
+            };
+
+            // Event handlers
+            input.onblur = saveRename;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveRename();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelRename();
+                }
+            };
+
+            // Replace title with input
+            titleElement.textContent = '';
+            titleElement.appendChild(input);
+            input.focus();
+            input.select();
+        }
+
         // Send message
         async function sendMessage() {
             if (isLoading || !currentConversationId) return;
@@ -547,7 +745,6 @@
                 await loadConversations();
 
             } catch (error) {
-                console.error('Error sending message:', error);
                 loadingDiv.remove();
                 addMessageToChat('assistant', 'Error: Could not get response from Ollama');
             } finally {
@@ -591,7 +788,7 @@
                     currentConversationId = null;
                     document.getElementById('chatContainer').innerHTML = `
                         <div class="no-conversation">
-                            <h2>Welcome to Ollama Chat</h2>
+                            <h2>Welcome to chat-o-llama</h2>
                             <p>Create a new chat to get started</p>
                         </div>
                     `;
