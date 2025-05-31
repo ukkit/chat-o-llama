@@ -47,6 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC);
 '''
 
+
 def get_db():
     """Get database connection."""
     if 'db' not in g:
@@ -54,11 +55,13 @@ def get_db():
         g.db.row_factory = sqlite3.Row
     return g.db
 
+
 def close_db(error):
     """Close database connection."""
     db = g.pop('db', None)
     if db is not None:
         db.close()
+
 
 def init_db():
     """Initialize database with schema."""
@@ -67,9 +70,11 @@ def init_db():
         conn.commit()
     logger.info(f"Database initialized: {DATABASE_PATH}")
 
+
 @app.teardown_appcontext
 def close_db_on_teardown(error):
     close_db(error)
+
 
 class OllamaAPI:
     """Ollama API client."""
@@ -84,11 +89,14 @@ class OllamaAPI:
             if response.status_code == 200:
                 data = response.json()
                 models = data.get('models', [])
-                model_names = [model['name'] for model in models if 'name' in model]
-                print(f"Successfully fetched {len(model_names)} models: {model_names}")
+                model_names = [model['name']
+                               for model in models if 'name' in model]
+                print(
+                    f"Successfully fetched {len(model_names)} models: {model_names}")
                 return model_names
             else:
-                print(f"Ollama API returned status {response.status_code}: {response.text}")
+                print(
+                    f"Ollama API returned status {response.status_code}: {response.text}")
                 return []
 
         except requests.exceptions.ConnectionError as e:
@@ -106,10 +114,15 @@ class OllamaAPI:
     def generate_response(model, prompt, conversation_history=None):
         """Generate response from Ollama."""
         try:
+            # Define your system personality here
+            system_prompt = """Your name is Bhaai, a helpful, friendly, and knowledgeable AI assistant . You have a warm personality and enjoy helping users solve problems. You're curious about technology and always try to provide practical, actionable advice. You occasionally use light humor when appropriate, but remain professional and focused on being genuinely helpful."""
+
             # Build context from conversation history
-            context = ""
+            context = f"{system_prompt}\n\n"
+
             if conversation_history:
-                for msg in conversation_history[-10:]:  # Last 10 messages for context
+                # Last 10 messages for context
+                for msg in conversation_history[-10:]:
                     role = "Human" if msg['role'] == 'user' else "Assistant"
                     context += f"{role}: {msg['content']}\n"
 
@@ -144,6 +157,7 @@ class OllamaAPI:
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
             return f"Unexpected error: {str(e)}"
+
 
 class ConversationManager:
     """Manage conversations and messages."""
@@ -190,7 +204,8 @@ class ConversationManager:
     def delete_conversation(conversation_id):
         """Delete conversation and all messages."""
         db = get_db()
-        db.execute('DELETE FROM conversations WHERE id = ?', (conversation_id,))
+        db.execute('DELETE FROM conversations WHERE id = ?',
+                   (conversation_id,))
         db.commit()
 
     @staticmethod
@@ -214,10 +229,13 @@ class ConversationManager:
         ).fetchall()
 
 # Routes
+
+
 @app.route('/')
 def index():
     """Main chat interface."""
     return render_template('index.html')
+
 
 @app.route('/api/models')
 def api_models():
@@ -238,6 +256,7 @@ def api_models():
             'ollama_url': OLLAMA_API_URL
         }), 500
 
+
 @app.route('/api/conversations')
 def api_conversations():
     """Get all conversations."""
@@ -245,6 +264,7 @@ def api_conversations():
     return jsonify({
         'conversations': [dict(conv) for conv in conversations]
     })
+
 
 @app.route('/api/conversations', methods=['POST'])
 def api_create_conversation():
@@ -255,6 +275,7 @@ def api_create_conversation():
 
     conv_id = ConversationManager.create_conversation(title, model)
     return jsonify({'conversation_id': conv_id})
+
 
 @app.route('/api/conversations/<int:conversation_id>')
 def api_get_conversation(conversation_id):
@@ -269,11 +290,13 @@ def api_get_conversation(conversation_id):
         'messages': [dict(msg) for msg in messages]
     })
 
+
 @app.route('/api/conversations/<int:conversation_id>', methods=['DELETE'])
 def api_delete_conversation(conversation_id):
     """Delete conversation."""
     ConversationManager.delete_conversation(conversation_id)
     return jsonify({'success': True})
+
 
 @app.route('/api/conversations/<int:conversation_id>', methods=['PUT'])
 def api_update_conversation(conversation_id):
@@ -300,6 +323,7 @@ def api_update_conversation(conversation_id):
 
     return jsonify({'success': True, 'title': new_title})
 
+
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     """Send message and get response."""
@@ -316,18 +340,21 @@ def api_chat():
 
     # Get conversation history for context
     messages = ConversationManager.get_messages(conversation_id)
-    history = [{'role': msg['role'], 'content': msg['content']} for msg in messages[:-1]]
+    history = [{'role': msg['role'], 'content': msg['content']}
+               for msg in messages[:-1]]
 
     # Generate response
     response = OllamaAPI.generate_response(model, message, history)
 
     # Add assistant response
-    ConversationManager.add_message(conversation_id, 'assistant', response, model)
+    ConversationManager.add_message(
+        conversation_id, 'assistant', response, model)
 
     return jsonify({
         'response': response,
         'model': model
     })
+
 
 @app.route('/api/search')
 def api_search():
@@ -350,6 +377,7 @@ def api_search():
     return jsonify({
         'results': [dict(result) for result in results]
     })
+
 
 if __name__ == '__main__':
     # Initialize database
