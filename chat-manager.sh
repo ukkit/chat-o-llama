@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Ollama Chat Process Manager
+# Chat-O-Llama Process Manager
 # Usage: ./manage_chat.sh [start|stop|status|restart] [port]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -115,7 +115,7 @@ start_app() {
     fi
 
     # Start the application in background
-    print_status "Starting Ollama Chat..."
+    print_status "Starting Chat-O-Llama..."
     nohup bash -c "
         cd '$SCRIPT_DIR'
         PORT=$port $PYTHON_CMD app.py
@@ -127,7 +127,7 @@ start_app() {
     # Wait a moment and check if it started successfully
     sleep 2
     if ps -p $app_pid > /dev/null 2>&1; then
-        print_status "Ollama Chat started successfully!"
+        print_status "Chat-O-Llama started successfully!"
         print_info "PID: $app_pid"
         print_info "Port: $port"
         print_info "Log file: $LOG_FILE"
@@ -137,7 +137,7 @@ start_app() {
         print_info "To check status: $0 status"
         print_info "To view logs: tail -f $LOG_FILE"
     else
-        print_error "Failed to start Ollama Chat"
+        print_error "Failed to start Chat-O-Llama"
         print_info "Check log file: $LOG_FILE"
         rm -f "$PID_FILE"
         return 1
@@ -146,7 +146,7 @@ start_app() {
 
 # Function to stop the application
 stop_app() {
-    print_info "Stopping Ollama Chat..."
+    print_info "Stopping Chat-O-Llama..."
 
     local stopped_any=false
 
@@ -239,9 +239,9 @@ stop_app() {
         done
     else
         if [ "$stopped_any" = true ]; then
-            print_status "All Ollama Chat processes stopped successfully"
+            print_status "All Chat-O-Llama processes stopped successfully"
         else
-            print_info "No Ollama Chat processes were running"
+            print_info "No Chat-O-Llama processes were running"
         fi
     fi
 }
@@ -280,7 +280,7 @@ force_stop() {
 # Function to restart the application
 restart_app() {
     local port=${1:-$DEFAULT_PORT}
-    print_info "Restarting Ollama Chat..."
+    print_info "Restarting Chat-O-Llama..."
     stop_app
     sleep 2
     start_app $port
@@ -292,7 +292,7 @@ check_status() {
         local pid=$(cat "$PID_FILE")
         if ps -p $pid > /dev/null 2>&1; then
             local port=$(lsof -p $pid -i -a | grep LISTEN | awk '{print $9}' | cut -d: -f2)
-            print_status "Ollama Chat is running"
+            print_status "Chat-O-Llama is running"
             print_info "PID: $pid"
             print_info "Port: $port"
             print_info "Access at: http://localhost:$port"
@@ -310,7 +310,7 @@ check_status() {
             rm -f "$PID_FILE"
         fi
     else
-        print_info "Ollama Chat is not running"
+        print_info "Chat-O-Llama is not running"
 
         # Check for orphaned processes
         local pids=$(pgrep -f "python.*app.py")
@@ -326,7 +326,7 @@ check_status() {
 
 # Function to show usage
 show_usage() {
-    echo "Ollama Chat Process Manager (chat-o-llama)"
+    echo "Chat-O-Llama Process Manager (chat-o-llama)"
     echo ""
     echo "Usage: $0 [command] [port]"
     echo ""
@@ -336,11 +336,11 @@ show_usage() {
     echo "  - Virtual environment must be activated before running: source venv/bin/activate"
     echo ""
     echo "Commands:"
-    echo "  start [port]  - Start Ollama Chat (default port: $DEFAULT_PORT)"
-    echo "  stop          - Stop Ollama Chat gracefully"
-    echo "  force-stop    - Force kill all Ollama Chat processes"
-    echo "  restart [port]- Restart Ollama Chat"
-    echo "  status        - Check if Ollama Chat is running"
+    echo "  start [port]  - Start Chat-O-Llama (default port: $DEFAULT_PORT)"
+    echo "  stop          - Stop Chat-O-Llama gracefully"
+    echo "  force-stop    - Force kill all Chat-O-Llama processes"
+    echo "  restart [port]- Restart Chat-O-Llama"
+    echo "  status        - Check if Chat-O-Llama is running"
     echo "  logs          - Show recent logs"
     echo "  help          - Show this help message"
     echo ""
