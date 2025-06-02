@@ -1,4 +1,4 @@
-# Ollama Chat Frontend
+# chat-o-llama 🦙
 
 A lightweight web interface for [Ollama](https://ollama.ai/) with persistent chat history and conversation management.
 
@@ -14,11 +14,19 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 - 🎯 **Process Management** - Easy start/stop with background service management
 
 
-![Chat-O-Llama screenshot](screenshot.png)
+![chat-o-llama - Select model](screenshot_1.png)
+select Model from drop-down
+
+![chat-o-llama - Start new chat ](screenshot_2.png)
+Started a new chat
+
+![chat-ol-llama - Generate response](screenshot_3.png)
+waiting for response from ollama
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.8+, [Ollama](https://ollama.ai/) installed with at least one model downloaded
 
 ### Installation & Setup

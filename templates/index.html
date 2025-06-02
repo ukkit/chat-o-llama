@@ -310,9 +310,8 @@
         }
 
         .loading {
-            display: none;
             padding: 12px 16px;
-            color: #7d8590;
+            color: #58a6ff;  /* Changed from #7d8590 */
             font-style: italic;
         }
 
@@ -714,7 +713,7 @@
             // Show loading
             isLoading = true;
             document.getElementById('sendBtn').disabled = true;
-            document.getElementById('sendBtn').textContent = 'Sending...';
+            document.getElementById('sendBtn').textContent = 'Generating...';
 
             const loadingDiv = document.createElement('div');
             loadingDiv.className = 'loading';
