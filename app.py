@@ -17,11 +17,76 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+# For future use
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'
+
+# Load configuration from JSON file
+
+def load_config():
+    """Load configuration from config.json file."""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        logger.info("Configuration loaded from config.json")
+        return config
+    except FileNotFoundError:
+        logger.warning(
+            f"Config file not found at {config_path}, using defaults")
+        return get_default_config()
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in config file: {e}, using defaults")
+        return get_default_config()
+
+
+def get_default_config():
+    """Get default configuration if config.json is not available."""
+    return {
+        "timeouts": {
+            "ollama_timeout": 180,
+            "ollama_connect_timeout": 15
+        },
+        "model_options": {
+            "temperature": 0.5,
+            "top_p": 0.8,
+            "top_k": 30,
+            "num_predict": 2048,
+            "num_ctx": 4096,
+            "repeat_penalty": 1.1,
+            "stop": ["\n\nHuman:", "\n\nUser:"]
+        },
+        "performance": {
+            "context_history_limit": 10,
+            "batch_size": 1,
+            "use_mlock": True,
+            "use_mmap": True,
+            "num_thread": -1,
+            "num_gpu": 0
+        },
+        "system_prompt": "Your name is Bhaai, a helpful, friendly, and knowledgeable AI assistant. You have a warm personality and enjoy helping users solve problems. You're curious about technology and always try to provide practical, actionable advice. You occasionally use light humor when appropriate, but remain professional and focused on being genuinely helpful.",
+        "response_optimization": {
+            "stream": False,
+            "keep_alive": "5m",
+            "low_vram": False,
+            "f16_kv": True,
+            "logits_all": False,
+            "vocab_only": False,
+            "use_mmap": True,
+            "use_mlock": False,
+            "embedding_only": False,
+            "numa": False
+        }
+    }
+
+
+# Load configuration
+CONFIG = load_config()
 
 # Configuration
 OLLAMA_API_URL = os.getenv('OLLAMA_API_URL', 'http://localhost:11434')
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'ollama_chat.db')
+OLLAMA_TIMEOUT = CONFIG['timeouts']['ollama_timeout']
+OLLAMA_CONNECT_TIMEOUT = CONFIG['timeouts']['ollama_connect_timeout']
 
 # Database schema
 SCHEMA = '''
@@ -84,7 +149,10 @@ class OllamaAPI:
         """Get available models from Ollama."""
         try:
             print(f"Attempting to fetch models from {OLLAMA_API_URL}/api/tags")
-            response = requests.get(f"{OLLAMA_API_URL}/api/tags", timeout=10)
+            response = requests.get(
+                f"{OLLAMA_API_URL}/api/tags",
+                timeout=(OLLAMA_CONNECT_TIMEOUT, 30)
+            )
 
             if response.status_code == 200:
                 data = response.json()
@@ -114,35 +182,60 @@ class OllamaAPI:
     def generate_response(model, prompt, conversation_history=None):
         """Generate response from Ollama."""
         try:
-            # Define your system personality here
-            system_prompt = """Your name is Bhaai, a helpful, friendly, and knowledgeable AI assistant . You have a warm personality and enjoy helping users solve problems. You're curious about technology and always try to provide practical, actionable advice. You occasionally use light humor when appropriate, but remain professional and focused on being genuinely helpful."""
+            # Get system prompt from config
+            system_prompt = CONFIG['system_prompt']
 
             # Build context from conversation history
             context = f"{system_prompt}\n\n"
 
             if conversation_history:
-                # Last 10 messages for context
-                for msg in conversation_history[-10:]:
+                # Use configurable history limit
+                history_limit = CONFIG['performance']['context_history_limit']
+                for msg in conversation_history[-history_limit:]:
                     role = "Human" if msg['role'] == 'user' else "Assistant"
                     context += f"{role}: {msg['content']}\n"
 
             full_prompt = f"{context}Human: {prompt}\nAssistant:"
 
+            # Build payload with all configuration options
             payload = {
                 "model": model,
                 "prompt": full_prompt,
-                "stream": False,
+                "stream": CONFIG['response_optimization']['stream'],
                 "options": {
-                    "temperature": 0.7,
-                    "top_p": 0.9,
-                    "top_k": 40
-                }
+                    # Model generation options from config
+                    "temperature": CONFIG['model_options']['temperature'],
+                    "top_p": CONFIG['model_options']['top_p'],
+                    "top_k": CONFIG['model_options']['top_k'],
+                    "num_predict": CONFIG['model_options']['num_predict'],
+                    "num_ctx": CONFIG['model_options']['num_ctx'],
+                    "repeat_penalty": CONFIG['model_options']['repeat_penalty'],
+                    "stop": CONFIG['model_options']['stop'],
+
+                    # Performance optimization options
+                    "num_thread": CONFIG['performance']['num_thread'],
+                    "num_gpu": CONFIG['performance']['num_gpu'],
+                    "use_mlock": CONFIG['performance']['use_mlock'],
+                    "use_mmap": CONFIG['performance']['use_mmap'],
+
+                    # Response optimization options
+                    "f16_kv": CONFIG['response_optimization']['f16_kv'],
+                    "logits_all": CONFIG['response_optimization']['logits_all'],
+                    "vocab_only": CONFIG['response_optimization']['vocab_only'],
+                    "embedding_only": CONFIG['response_optimization']['embedding_only'],
+                    "numa": CONFIG['response_optimization']['numa'],
+                },
+                "keep_alive": CONFIG['response_optimization']['keep_alive']
             }
+
+            # Add low_vram option if enabled
+            if CONFIG['response_optimization']['low_vram']:
+                payload['options']['low_vram'] = True
 
             response = requests.post(
                 f"{OLLAMA_API_URL}/api/generate",
                 json=payload,
-                timeout=120
+                timeout=(OLLAMA_CONNECT_TIMEOUT, OLLAMA_TIMEOUT)
             )
 
             if response.status_code == 200:
@@ -151,6 +244,13 @@ class OllamaAPI:
             else:
                 return f"Error: HTTP {response.status_code}"
 
+        except requests.exceptions.ReadTimeout as e:
+            logger.error(
+                f"Ollama read timeout after {OLLAMA_TIMEOUT} seconds: {e}")
+            return f"Response timed out after {OLLAMA_TIMEOUT} seconds. Try a shorter prompt or increase timeout."
+        except requests.exceptions.ConnectTimeout as e:
+            logger.error(f"Ollama connection timeout: {e}")
+            return "Connection to Ollama timed out. Make sure Ollama is running and accessible."
         except requests.RequestException as e:
             logger.error(f"Ollama API error: {e}")
             return f"Error connecting to Ollama: {str(e)}"
@@ -255,6 +355,18 @@ def api_models():
             'error': str(e),
             'ollama_url': OLLAMA_API_URL
         }), 500
+
+
+@app.route('/api/config')
+def api_config():
+    """Get current configuration (excluding sensitive data)."""
+    config_display = {
+        'timeouts': CONFIG['timeouts'],
+        'model_options': CONFIG['model_options'],
+        'performance': CONFIG['performance'],
+        'response_optimization': {k: v for k, v in CONFIG['response_optimization'].items() if k != 'system_prompt'}
+    }
+    return jsonify(config_display)
 
 
 @app.route('/api/conversations')
@@ -390,9 +502,15 @@ if __name__ == '__main__':
     else:
         logger.warning("Could not connect to Ollama or no models available")
 
+    # Log current configuration
+    logger.info(f"Ollama timeout: {OLLAMA_TIMEOUT}s")
+    logger.info(
+        f"Context history limit: {CONFIG['performance']['context_history_limit']} messages")
+    logger.info(f"Temperature: {CONFIG['model_options']['temperature']}")
+
     # Run the app
     app.run(
         host='0.0.0.0',
-        port=int(os.getenv('PORT', 8080)),  # Changed default from 5000 to 8080
+        port=int(os.getenv('PORT', 8080)),
         debug=os.getenv('DEBUG', 'False').lower() == 'true'
     )

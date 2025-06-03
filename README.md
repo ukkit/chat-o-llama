@@ -1,6 +1,6 @@
 # chat-o-llama 🦙
 
-A lightweight web interface for [Ollama](https://ollama.ai/) with persistent chat history and conversation management.
+A lightweight web interface for [Ollama](https://ollama.ai/) with persistent chat history, conversation management, and advanced configuration options.
 
 ![Ollama Chat Interface](https://img.shields.io/badge/Interface-Web%20Based-blue) ![Python](https://img.shields.io/badge/Python-3.8%2B-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -9,6 +9,7 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 - 💬 **Multiple Conversations** - Create, manage, and rename chat sessions
 - 📚 **Persistent History** - SQLite database storage with search functionality
 - 🤖 **Model Selection** - Choose from available Ollama models
+- ⚙️ **Advanced Configuration** - JSON-based configuration with performance optimization
 - 📱 **Responsive Design** - Works on desktop and mobile
 - 🚀 **Lightweight** - Minimal resource usage for local development
 - 🎯 **Process Management** - Easy start/stop with background service management
@@ -74,6 +75,64 @@ ollama pull tinyllama      # 637MB - ultra lightweight
 
 ## 🔧 Configuration
 
+### JSON Configuration File
+
+Chat-o-llama supports advanced configuration through a `config.json` file. The application will automatically create a default configuration or load your custom settings.
+
+#### Quick Performance Setup
+
+The default `config.json` is precision optimized for CPU-only systems:
+
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 600,
+    "ollama_connect_timeout": 45
+  },
+  "model_options": {
+    "temperature": 0.1,
+    "top_p": 0.95,
+    "top_k": 50,
+    "min_p": 0.01,
+    "typical_p": 0.95,
+    "num_predict": 4096,
+    "num_ctx": 8192,
+    "repeat_penalty": 1.15,
+    "repeat_last_n": 64,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "penalize_newline": false,
+    "stop": ["\n\nHuman:", "\n\nUser:"],
+    "seed": null
+  },
+  "performance": {
+    "context_history_limit": 15,
+    "num_thread": -1,
+    "num_gpu": 0,
+    "main_gpu": 0,
+    "num_batch": 1,
+    "num_keep": 10,
+
+  },
+  "system_prompt": "You are Dost, a knowledgeable and thoughtful AI assistant. Take time to provide detailed, accurate, and well-reasoned responses. Consider multiple perspectives and provide comprehensive information when helpful.",
+  "response_optimization": {
+    "stream": false,
+    "keep_alive": "10m",
+    "low_vram": false,
+    "f16_kv": false,
+
+  }
+}
+```
+
+#### Configuration API
+
+Access current configuration via API:
+
+```bash
+curl http://localhost:3000/api/config
+```
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -91,26 +150,56 @@ PORT=8080 ./chat-manager.sh start
 export OLLAMA_API_URL="http://192.168.1.100:11434"
 ```
 
+## ⚡ Performance Optimization
+
+### For CPU-Only Systems (Recommended)
+
+The default `config.json` is perfomance optimized for CPU-only systems like the Dell Optiplex series.
+
+For faster response, you can use `speed_config.json` file:
+
+**Key Optimizations:**
+- **Faster Sampling**: Uses `min_p` + `typical_p` instead of `top_p`/`top_k` for 10-20% speed improvement
+- **Reduced Context**: `num_ctx: 2048` and `num_predict: 1024` for faster responses
+- **CPU Optimization**: `low_vram: true`, `num_batch: 2` for better multi-core utilization
+- **Memory Efficient**: `context_history_limit: 5` for faster processing
+
+### For GPU Systems
+
+Modify `config.json` for GPU acceleration:
+```json
+{
+  "performance": {
+    "num_gpu": 1,
+    "main_gpu": 0,
+    "low_vram": false
+  },
+  "model_options": {
+    "num_ctx": 4096,
+    "num_predict": 2048
+  }
+}
+```
+
+### Traditional Ollama Environment Variables
+
+**For low-resource systems:**
+```bash
+export OLLAMA_NUM_PARALLEL=1
+export OLLAMA_MAX_LOADED_MODELS=1
+export OLLAMA_KEEP_ALIVE=5m
+```
+
 ## 🛠️ API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/models` | Available models |
+| GET | `/api/config` | Current configuration |
 | GET/POST | `/api/conversations` | List/create conversations |
 | GET/DELETE | `/api/conversations/{id}` | Get/delete conversation |
 | POST | `/api/chat` | Send message |
 | GET | `/api/search?q={query}` | Search conversations |
-
-## ⚡ Performance Tips
-
-**For low-resource systems:**
-- Use lightweight models: `tinyllama`, `qwen2.5:1.5b`
-- Set Ollama environment variables:
-  ```bash
-  export OLLAMA_NUM_PARALLEL=1
-  export OLLAMA_MAX_LOADED_MODELS=1
-  export OLLAMA_KEEP_ALIVE=5m
-  ```
 
 ## 🔍 Troubleshooting
 
@@ -122,6 +211,8 @@ export OLLAMA_API_URL="http://192.168.1.100:11434"
 | No models | `ollama pull phi3:mini` |
 | Permission denied | `chmod +x chat-manager.sh` |
 | Dependencies missing | `pip install -r requirements.txt` |
+| Slow responses | Create optimized `config.json` (see Configuration) |
+| Config errors | Check JSON syntax with `python -m json.tool config.json` |
 
 ### Debug Mode
 
@@ -143,21 +234,22 @@ rm -f data/chat-o-llama.db
 
 ```
 chat-o-llama/
-├── chat-manager.sh       # Process manager
-├── app.py               # Flask application
-├── requirements.txt     # Dependencies
-├── templates/index.html # Web interface
-├── data/               # Database (auto-created)
-└── chat-o-llama.log    # Logs
+├── chat-manager.sh         # Process manager
+├── app.py                  # Flask application
+├── config.json             # Default Configuration file
+├── speed_config.json       # Configuration file for speed over precision
+├── requirements.txt        # Dependencies
+├── templates/index.html    # Web interface
+├── data/                   # Database (auto-created)
+├── docs/configuration.md   # Web interface
+└── chat-o-llama.log        # Logs
 ```
 
-## 🤝 Contributing
+## 🎛️ Configuration Reference
 
-1. Fork the repository
-2. Set up development environment with virtual environment
-3. Run `DEBUG=true python app.py` for development
-4. Test with `./chat-manager.sh start`
-5. Submit pull request
+- For detailed configuration explanations, see the [Configuration Guide](docs/configuration.md).
+
+- For detailed comparision between default config.json and speed_config.json, see the [Configuration Comparision Guide](docs/config_comparison_guide.md)
 
 ## 📄 License
 
