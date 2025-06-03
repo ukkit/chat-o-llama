@@ -133,10 +133,11 @@ dmypy.json
 # =================================
 
 # Process management files
-chat-o-llama.pid
-chat-o-llama.log
+chat-o-llama.pid   # Legacy name (just in case)
+chat-o-llama.log   # Legacy name (just in case)
 ollama_chat.pid    # Legacy name (just in case)
 ollama_chat.log    # Legacy name (just in case)
+process.pid
 
 # Database files
 data/

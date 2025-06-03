@@ -234,15 +234,16 @@ rm -f data/chat-o-llama.db
 
 ```
 chat-o-llama/
-├── chat-manager.sh         # Process manager
-├── app.py                  # Flask application
-├── config.json             # Default Configuration file
-├── speed_config.json       # Configuration file for speed over precision
-├── requirements.txt        # Dependencies
-├── templates/index.html    # Web interface
-├── data/                   # Database (auto-created)
-├── docs/configuration.md   # Web interface
-└── chat-o-llama.log        # Logs
+├── chat-manager.sh             # Process manager
+├── app.py                      # Flask application
+├── config.json                 # Default Configuration file
+├── speed_config.json           # Configuration file for speed over precision
+├── requirements.txt            # Dependencies
+├── templates/index.html        # Web interface
+├── docs/configuration.md       # Ollama configuration variables
+├── docs/config_comparison.md   # Comparison of different ollama configurations
+├── data/                       # Database (auto-created)
+└── logs/                       # Logs direcotry (auto created)
 ```
 
 ## 🎛️ Configuration Reference

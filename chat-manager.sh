@@ -4,8 +4,16 @@
 # Usage: ./manage_chat.sh [start|stop|status|restart] [port]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PID_FILE="$SCRIPT_DIR/chat-o-llama.pid"
-LOG_FILE="$SCRIPT_DIR/chat-o-llama.log"
+PID_FILE="$SCRIPT_DIR/process.pid"
+
+# Create log directory if it doesn't exist
+LOG_DIR="$SCRIPT_DIR/logs"
+mkdir -p "$LOG_DIR"
+
+# Generate log file with current datetime
+CURRENT_DATETIME=$(date +"%Y%m%d_%H%M%S")
+LOG_FILE="$LOG_DIR/chat-o-llama_$CURRENT_DATETIME.log"
+
 DEFAULT_PORT=3000
 
 # Colors for output
@@ -296,12 +304,13 @@ check_status() {
             print_info "PID: $pid"
             print_info "Port: $port"
             print_info "Access at: http://localhost:$port"
-            print_info "Log file: $LOG_FILE"
 
-            # Show recent log entries
-            if [ -f "$LOG_FILE" ]; then
+            # Find the most recent log file for this session
+            local latest_log=$(ls -t "$LOG_DIR"/chat-o-llama_*.log 2>/dev/null | head -n1)
+            if [ -n "$latest_log" ]; then
+                print_info "Current log file: $latest_log"
                 print_info "Recent log entries:"
-                tail -5 "$LOG_FILE" | while read line; do
+                tail -5 "$latest_log" | while read line; do
                     echo "  $line"
                 done
             fi
@@ -359,16 +368,21 @@ show_usage() {
     echo ""
     echo "Files:"
     echo "  PID file: $PID_FILE"
-    echo "  Log file: $LOG_FILE"
+    echo "  Log directory: $LOG_DIR"
+    echo "  Current log: chat-o-llama_YYYYMMDD_HHMMSS.log"
 }
 
 # Function to show logs
 show_logs() {
-    if [ -f "$LOG_FILE" ]; then
-        print_info "Showing logs (press Ctrl+C to exit):"
-        tail -f "$LOG_FILE"
+    # Find the most recent log file
+    local latest_log=$(ls -t "$LOG_DIR"/chat-o-llama_*.log 2>/dev/null | head -n1)
+
+    if [ -n "$latest_log" ]; then
+        print_info "Showing logs from: $latest_log (press Ctrl+C to exit):"
+        tail -f "$latest_log"
     else
-        print_warning "Log file not found: $LOG_FILE"
+        print_warning "No log files found in: $LOG_DIR"
+        print_info "Log files are created when you start the application with: $0 start"
     fi
 }
 
