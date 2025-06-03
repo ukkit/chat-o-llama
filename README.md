@@ -14,15 +14,18 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 - 🚀 **Lightweight** - Minimal resource usage for local development
 - 🎯 **Process Management** - Easy start/stop with background service management
 
+<details>
+<summary><b>📸 View Screenshots</b></summary>
 
-![chat-o-llama - Select model](screenshot_1.png)
+![chat-o-llama - Select model](./docs/assets/screenshot_1.png)
 select Model from drop-down
 
-![chat-o-llama - Start new chat ](screenshot_2.png)
+![chat-o-llama - Start new chat ](./docs/assets/screenshot_2.png)
 Started a new chat
 
-![chat-ol-llama - Generate response](screenshot_3.png)
+![chat-ol-llama - Generate response](./docs/assets/screenshot_3.png)
 waiting for response from ollama
+</details>
 
 ## 🚀 Quick Start
 
