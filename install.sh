@@ -1,17 +1,19 @@
-#!/bin/bash
+#!/bin/sh
 
 # chat-o-llama Auto Installer
-# Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
-# Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
+# Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+# Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
 
-# Ensure we're using bash
-if [ -z "$BASH_VERSION" ]; then
-    echo "This script requires bash. Please run with bash:"
-    echo "curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash"
-    exit 1
+# For better compatibility, try to use bash if available
+if command -v bash >/dev/null 2>&1; then
+    if [ -z "$BASH_VERSION" ]; then
+        # Re-execute with bash if we're not already running in bash
+        exec bash "$0" "$@"
+    fi
 fi
 
-set -e  # Exit on any error
+# Exit on any error
+set -e
 
 # Colors for output
 RED='\033[0;31m'
@@ -59,15 +61,31 @@ print_step() {
     echo -e "${CYAN}▶ $1${NC}"
 }
 
-# Function to check if command exists
+# Function to check if command exists (POSIX compatible)
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Function to compare version numbers
+# Function to compare version numbers (POSIX compatible)
 version_ge() {
     # Returns 0 (true) if version $1 >= $2
-    printf '%s\n%s' "$2" "$1" | sort -V -C
+    # Simple version comparison without requiring sort -V
+    local ver1="$1"
+    local ver2="$2"
+
+    # Convert versions to comparable numbers
+    local ver1_major=$(echo "$ver1" | cut -d. -f1)
+    local ver1_minor=$(echo "$ver1" | cut -d. -f2 2>/dev/null || echo "0")
+    local ver2_major=$(echo "$ver2" | cut -d. -f1)
+    local ver2_minor=$(echo "$ver2" | cut -d. -f2 2>/dev/null || echo "0")
+
+    if [ "$ver1_major" -gt "$ver2_major" ]; then
+        return 0
+    elif [ "$ver1_major" -eq "$ver2_major" ] && [ "$ver1_minor" -ge "$ver2_minor" ]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Function to get Python version
@@ -83,10 +101,10 @@ get_python_version() {
 # Function to check Python installation
 check_python() {
     print_step "Checking Python installation..."
-    
+
     local python_cmd=""
     local python_version=""
-    
+
     # Try different Python commands
     for cmd in python3 python python3.11 python3.10 python3.9 python3.8; do
         if command_exists "$cmd"; then
@@ -98,7 +116,7 @@ check_python() {
             fi
         fi
     done
-    
+
     if [ -z "$python_cmd" ]; then
         print_error "Python $MIN_PYTHON_VERSION or higher not found!"
         echo ""
@@ -109,10 +127,10 @@ check_python() {
         print_info "• Or download from: https://python.org/downloads"
         exit 1
     fi
-    
+
     print_success "Python $python_version found at $(command -v "$python_cmd")"
     echo "PYTHON_CMD=$python_cmd" > /tmp/chat_ollama_env
-    
+
     # Check if pip is available
     if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
         print_warning "pip not found, attempting to install..."
@@ -125,7 +143,7 @@ check_python() {
             exit 1
         fi
     fi
-    
+
     # Check if venv module is available
     if ! "$python_cmd" -m venv --help >/dev/null 2>&1; then
         print_warning "venv module not found, attempting to install..."
@@ -141,13 +159,13 @@ check_python() {
 # Function to check Ollama installation
 check_ollama() {
     print_step "Checking Ollama installation..."
-    
+
     if ! command_exists ollama; then
         print_error "Ollama not found!"
         echo ""
         print_info "Installing Ollama..."
         print_info "Running: curl -fsSL https://ollama.ai/install.sh | sh"
-        
+
         # Install Ollama
         if curl -fsSL https://ollama.ai/install.sh | sh; then
             print_success "Ollama installed successfully!"
@@ -159,11 +177,11 @@ check_ollama() {
     else
         print_success "Ollama found at $(command -v ollama)"
     fi
-    
+
     # Check if Ollama service is running
     if ! ollama list >/dev/null 2>&1; then
         print_warning "Ollama service not running, attempting to start..."
-        
+
         # Try to start Ollama service in background
         if command_exists systemctl; then
             # Try systemd service
@@ -172,13 +190,13 @@ check_ollama() {
                 sleep 3
             fi
         fi
-        
+
         # If still not working, start manually in background
         if ! ollama list >/dev/null 2>&1; then
             print_info "Starting Ollama service in background..."
             nohup ollama serve >/dev/null 2>&1 &
             sleep 5
-            
+
             # Check again
             if ! ollama list >/dev/null 2>&1; then
                 print_error "Could not start Ollama service."
@@ -188,14 +206,14 @@ check_ollama() {
             fi
         fi
     fi
-    
+
     print_success "Ollama service is running"
 }
 
 # Function to check if directory exists and handle it
 check_install_directory() {
     print_step "Checking installation directory..."
-    
+
     if [ -d "$INSTALL_DIR" ]; then
         print_warning "Directory $INSTALL_DIR already exists"
         echo ""
@@ -205,7 +223,7 @@ check_install_directory() {
         echo "3) Cancel installation"
         echo ""
         read -p "Choose option (1-3): " choice
-        
+
         case $choice in
             1)
                 print_info "Removing existing directory..."
@@ -237,11 +255,11 @@ check_install_directory() {
 # Function to download chat-o-llama
 download_project() {
     print_step "Downloading chat-o-llama from GitHub..."
-    
+
     if ! command_exists git; then
         print_error "git not found!"
         print_info "Installing git..."
-        
+
         if command_exists apt-get; then
             sudo apt-get update && sudo apt-get install -y git
         elif command_exists yum; then
@@ -253,7 +271,7 @@ download_project() {
             exit 1
         fi
     fi
-    
+
     # Clone the repository
     if git clone "$REPO_URL" "$INSTALL_DIR"; then
         print_success "chat-o-llama downloaded successfully"
@@ -262,22 +280,22 @@ download_project() {
         print_info "You can manually download from: $REPO_URL"
         exit 1
     fi
-    
+
     cd "$INSTALL_DIR"
 }
 
 # Function to create virtual environment
 create_virtual_env() {
     print_step "Creating Python virtual environment..."
-    
+
     # Source Python command from temp file
     source /tmp/chat_ollama_env
-    
+
     if [ -d "venv" ]; then
         print_warning "Virtual environment already exists, removing..."
         rm -rf venv
     fi
-    
+
     # Create virtual environment
     if "$PYTHON_CMD" -m venv venv; then
         print_success "Virtual environment created"
@@ -285,14 +303,14 @@ create_virtual_env() {
         print_error "Failed to create virtual environment"
         exit 1
     fi
-    
+
     # Activate virtual environment
     source venv/bin/activate
-    
+
     # Upgrade pip
     print_info "Upgrading pip..."
     pip install --upgrade pip
-    
+
     # Install requirements
     print_info "Installing Python dependencies..."
     if [ -f "requirements.txt" ]; then
@@ -312,10 +330,10 @@ create_virtual_env() {
 # Function to check and download Ollama models
 check_ollama_models() {
     print_step "Checking available Ollama models..."
-    
+
     # Get list of installed models
     local models=$(ollama list 2>/dev/null | grep -v "NAME" | awk '{print $1}' | grep -v "^$" || echo "")
-    
+
     if [ -z "$models" ]; then
         print_warning "No Ollama models found!"
         echo ""
@@ -325,32 +343,35 @@ check_ollama_models() {
         print_info "• llama3.2:1b (~1.3GB, better quality)"
         print_info "• phi3:mini (~2.3GB, excellent balance)"
         echo ""
-        
+
         read -p "Download recommended model ($RECOMMENDED_MODEL)? [Y/n]: " download_choice
         download_choice=${download_choice:-Y}
-        
-        if [[ "$download_choice" =~ ^[Yy]$ ]]; then
-            print_info "Downloading $RECOMMENDED_MODEL (this may take a few minutes)..."
-            
-            if ollama pull "$RECOMMENDED_MODEL"; then
-                print_success "Model $RECOMMENDED_MODEL downloaded successfully!"
-            else
-                print_warning "Failed to download $RECOMMENDED_MODEL, trying fallback..."
-                
-                if ollama pull "$FALLBACK_MODEL"; then
-                    print_success "Fallback model $FALLBACK_MODEL downloaded successfully!"
+
+        case "$download_choice" in
+            [Yy]*|"")  # Y, y, Yes, yes, or empty (default)
+                print_info "Downloading $RECOMMENDED_MODEL (this may take a few minutes)..."
+
+                if ollama pull "$RECOMMENDED_MODEL"; then
+                    print_success "Model $RECOMMENDED_MODEL downloaded successfully!"
                 else
-                    print_error "Failed to download any model."
-                    print_info "You can download models later with:"
-                    print_info "  ollama pull $RECOMMENDED_MODEL"
-                    print_info "  ollama pull $FALLBACK_MODEL"
+                    print_warning "Failed to download $RECOMMENDED_MODEL, trying fallback..."
+
+                    if ollama pull "$FALLBACK_MODEL"; then
+                        print_success "Fallback model $FALLBACK_MODEL downloaded successfully!"
+                    else
+                        print_error "Failed to download any model."
+                        print_info "You can download models later with:"
+                        print_info "  ollama pull $RECOMMENDED_MODEL"
+                        print_info "  ollama pull $FALLBACK_MODEL"
+                    fi
                 fi
-            fi
-        else
-            print_info "Skipping model download. You can download models later with:"
-            print_info "  ollama pull $RECOMMENDED_MODEL"
-            print_info "  ollama pull $FALLBACK_MODEL"
-        fi
+                ;;
+            *)
+                print_info "Skipping model download. You can download models later with:"
+                print_info "  ollama pull $RECOMMENDED_MODEL"
+                print_info "  ollama pull $FALLBACK_MODEL"
+                ;;
+        esac
     else
         print_success "Found existing models:"
         echo "$models" | while read -r model; do
@@ -364,7 +385,7 @@ check_ollama_models() {
 # Function to make scripts executable
 setup_permissions() {
     print_step "Setting up permissions..."
-    
+
     if [ -f "chat-manager.sh" ]; then
         chmod +x chat-manager.sh
         print_success "Made chat-manager.sh executable"
@@ -374,10 +395,10 @@ setup_permissions() {
 # Function to test installation
 test_installation() {
     print_step "Testing installation..."
-    
+
     # Activate virtual environment
     source venv/bin/activate
-    
+
     # Check if we can import required modules
     if python -c "import flask, requests; print('Dependencies OK')" >/dev/null 2>&1; then
         print_success "Python dependencies verified"
@@ -385,7 +406,7 @@ test_installation() {
         print_error "Python dependencies verification failed"
         return 1
     fi
-    
+
     # Check if Ollama is responsive
     if ollama list >/dev/null 2>&1; then
         print_success "Ollama connectivity verified"
@@ -393,27 +414,27 @@ test_installation() {
         print_warning "Ollama connectivity issue"
         return 1
     fi
-    
+
     return 0
 }
 
 # Function to start the application
 start_application() {
     print_step "Starting chat-o-llama..."
-    
+
     # Activate virtual environment
     source venv/bin/activate
-    
+
     # Find available port
     local port=$DEFAULT_PORT
     while netstat -ln 2>/dev/null | grep -q ":$port "; do
         port=$((port + 1))
     done
-    
+
     if [ "$port" != "$DEFAULT_PORT" ]; then
         print_warning "Port $DEFAULT_PORT is in use, using port $port instead"
     fi
-    
+
     # Start the application
     if [ -f "chat-manager.sh" ]; then
         print_info "Starting with chat-manager.sh..."
@@ -424,36 +445,24 @@ start_application() {
         echo $! > process.pid
         sleep 3
     fi
-    
-    # Verify it's running
-    if curl -s "http://localhost:$port" >/dev/null 2>&1; then
-        print_success "chat-o-llama started successfully!"
-        echo ""
-        print_header
-        echo -e "${GREEN}🎉 Installation Complete! 🎉${NC}"
-        echo ""
-        echo -e "${CYAN}Access your chat interface at:${NC}"
-        echo -e "${YELLOW}  👉 http://localhost:$port${NC}"
-        echo ""
-        echo -e "${BLUE}Management commands:${NC}"
-        echo -e "  ${GREEN}cd $INSTALL_DIR${NC}"
-        echo -e "  ${GREEN}source venv/bin/activate${NC}"
-        echo -e "  ${GREEN}./chat-manager.sh status${NC}  # Check status"
-        echo -e "  ${GREEN}./chat-manager.sh stop${NC}    # Stop service"
-        echo -e "  ${GREEN}./chat-manager.sh logs${NC}    # View logs"
-        echo ""
-        echo -e "${BLUE}Next steps:${NC}"
-        echo -e "  • Visit http://localhost:$port to start chatting"
-        echo -e "  • Select a model from the dropdown"
-        echo -e "  • Create a new chat to begin"
-        echo ""
-        echo -e "${PURPLE}Happy chatting with Ollama! 🦙${NC}"
-    else
-        print_error "Failed to start chat-o-llama"
-        print_info "You can try starting manually:"
-        print_info "  cd $INSTALL_DIR"
-        print_info "  source venv/bin/activate"
-        print_info "  ./chat-manager.sh start"
+
+    print_info "Waiting for service to start..."
+    local max_attempts=10
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s "http://localhost:$port" >/dev/null 2>&1; then
+            print_success "chat-o-llama started successfully!"
+            break
+        fi
+
+        print_info "Attempt $attempt/$max_attempts - waiting 3 seconds..."
+        sleep 3
+        attempt=$((attempt + 1))
+    done
+
+    if [ $attempt -gt $max_attempts ]; then
+        print_warning "Service may still be starting. Check manually with: ./chat-manager.sh status"
     fi
 }
 
@@ -486,30 +495,33 @@ show_final_instructions() {
     echo -e "${GREEN}Support:${NC} https://github.com/ukkit/chat-o-llama"
 }
 
-# Function to cleanup on error
+# Function to cleanup on error (POSIX compatible)
 cleanup_on_error() {
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
         print_error "Installation failed with exit code $exit_code. Cleaning up..."
-        
+
         # Remove temp files
         rm -f /tmp/chat_ollama_env
-        
+
         # Optionally remove partial installation
         if [ -d "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/.git/config" ]; then
-            read -p "Remove partial installation directory? [y/N]: " cleanup_choice
-            if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+        printf "Remove partial installation directory? [y/N]: "
+        read cleanup_choice
+        case "$cleanup_choice" in
+            [Yy]*)
                 rm -rf "$INSTALL_DIR"
                 print_info "Partial installation removed"
-            fi
+                ;;
+        esac
         fi
     fi
+    exit $exit_code
 }
 
-# Set up error handling without using ERR trap (for shell compatibility)
+# Set up error handling (POSIX compatible)
 handle_error() {
     cleanup_on_error
-    exit 1
 }
 
 # Main installation function
@@ -517,37 +529,42 @@ main() {
     # Clear screen and show header
     clear
     print_header
-    
+
     print_info "This script will install chat-o-llama with all dependencies"
     print_info "Installation directory: $INSTALL_DIR"
     echo ""
-    
+
     # Confirm installation
-    read -p "Continue with installation? [Y/n]: " confirm
+    printf "Continue with installation? [Y/n]: "
+    read confirm
     confirm=${confirm:-Y}
-    
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        print_info "Installation cancelled."
-        exit 0
-    fi
-    
+
+    case "$confirm" in
+        [Yy]*|"")  # Y, y, Yes, yes, or empty (default)
+            ;;
+        *)
+            print_info "Installation cancelled."
+            exit 0
+            ;;
+    esac
+
     echo ""
-    
+
     # Run installation steps with error handling
     check_python || handle_error
     check_ollama || handle_error
     check_install_directory || handle_error
-    
+
     # Only download if not updating
     if [ ! -d "$INSTALL_DIR" ]; then
         download_project || handle_error
     fi
-    
+
     cd "$INSTALL_DIR" || handle_error
     create_virtual_env || handle_error
     check_ollama_models || handle_error
     setup_permissions || handle_error
-    
+
     # Test installation
     if test_installation; then
         start_application || handle_error
@@ -557,7 +574,7 @@ main() {
         print_info "You may need to troubleshoot manually"
         handle_error
     fi
-    
+
     # Cleanup temp files
     rm -f /tmp/chat_ollama_env
 }
