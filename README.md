@@ -1,19 +1,19 @@
 # chat-o-llama 🦙
 
-**Your private, local AI chatbot with document search**
+**Your private, local AI chatbot**
+
 *No GPU? No cloud? No problem!*
 
 ![Interface-Local GUI-blue](https://img.shields.io/badge/Interface-Local_GUI-blue) ![Python](https://img.shields.io/badge/Python-3.8%2B-green) ![License](https://img.shields.io/badge/License-MIT-yellow) ![Offline-Capable](https://img.shields.io/badge/Offline-100%25-brightgreen)
 
-A lightweight **PyQt GUI** for running Ollama/llama.cpp models **completely offline** with built-in document search (RAG). Perfect for privacy-focused users and low-end hardware.
+A lightweight **PyQt GUI** for running Ollama/llama.cpp models **completely offline**. Perfect for privacy-focused users and low-end hardware.
 
 ## ✨ Why Choose chat-o-llama?
 
 | Feature | chat-o-llama | Alternatives |
 |---------|-------------|--------------|
 | 🔒 **Privacy** | All data stays on your machine | Often cloud-dependent |
-| 📂 **Document Search** | Built-in RAG (chat with your files) | Requires plugins |
-| 💻 **Lightweight** | Runs on CPUs with <8GB RAM | Heavy Electron apps |
+| 💻 **Lightweight** | Runs on CPUs with ~8GB RAM | Heavy Electron apps |
 | 🚫 **No Internet** | Works 100% offline | Needs web connection |
 
 ## 🚀 30-Second Quick Start
