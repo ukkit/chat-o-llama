@@ -91,6 +91,13 @@ Quick Fixes:
 | [API Guide](./docs/api.md) | API Guide |
 | [Troubleshooting Guide](./docs/troubleshooting.md) | Troubleshooting Guide |
 
+## ✔️ Tested On (Hardware)
+
+| Device | CPU | RAM | OS |
+|---------|-------------|---------|-------------|
+| Raspberry Pi 4 Model B Rev 1.4 | ARM Cortex-A72 | 8GB | Raspberry Pi OS |
+| Dell Optiplex 3070 | i3-9100T | 8GB | Debian 12 |
+| Nokia Purebook X14 | i5-10210U | 16 GB | Windows 11 Home |
 
 
 ## 🙏 Acknowledgments
