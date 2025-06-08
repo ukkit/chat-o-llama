@@ -9,19 +9,19 @@ This guide provides both automatic and manual installation methods for chat-o-ll
 The easiest way to install chat-o-llama with all dependencies:
 
 ```bash
-curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 ```
 
 **Alternative methods:**
 ```bash
 # Using wget
-wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 
 # Download and inspect first (recommended for security)
 curl -O https://github.com/ukkit/chat-o-llama/raw/main/install.sh
 cat install.sh  # Review the script
 chmod +x install.sh
-./install.sh
+bash install.sh
 ```
 
 ### What the Auto-Installer Does
@@ -338,7 +338,6 @@ EOF
 ### Common Issues and Solutions
 
 #### Python Issues
-
 ```bash
 # Python command not found
 sudo apt install python3  # Ubuntu/Debian
@@ -352,7 +351,6 @@ sudo apt install python3-venv  # Ubuntu/Debian
 ```
 
 #### Ollama Issues
-
 ```bash
 # Ollama command not found
 curl -fsSL https://ollama.ai/install.sh | sh
@@ -367,7 +365,6 @@ curl http://localhost:11434/api/tags  # Test connection
 ```
 
 #### Permission Issues
-
 ```bash
 # Script not executable
 chmod +x chat-manager.sh install.sh
@@ -377,7 +374,6 @@ sudo chown -R $USER:$USER ~/chat-o-llama
 ```
 
 #### Port Issues
-
 ```bash
 # Port already in use
 ./chat-manager.sh start 8080  # Use different port
@@ -385,7 +381,6 @@ sudo lsof -i :3000  # Check what's using port 3000
 ```
 
 #### Memory Issues
-
 ```bash
 # For low-memory systems, use smaller models
 ollama pull qwen2.5:0.5b  # Only ~380MB
@@ -487,13 +482,11 @@ If you encounter issues:
 5. **Verify system requirements** are met
 
 **Community Support:**
-
 - GitHub Issues: Report bugs and feature requests
 - Discussions: Share tips and configurations
 - Documentation: Check docs/ folder for detailed guides
 
 **System Information for Bug Reports:**
-
 ```bash
 # Collect system info for bug reports
 echo "OS: $(uname -a)"

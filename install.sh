@@ -1,8 +1,15 @@
 #!/bin/bash
 
 # chat-o-llama Auto Installer
-# Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
-# Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+# Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
+# Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
+
+# Ensure we're using bash
+if [ -z "$BASH_VERSION" ]; then
+    echo "This script requires bash. Please run with bash:"
+    echo "curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash"
+    exit 1
+fi
 
 set -e  # Exit on any error
 
@@ -481,23 +488,29 @@ show_final_instructions() {
 
 # Function to cleanup on error
 cleanup_on_error() {
-    print_error "Installation failed. Cleaning up..."
-    
-    # Remove temp files
-    rm -f /tmp/chat_ollama_env
-    
-    # Optionally remove partial installation
-    if [ -d "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/.git/config" ]; then
-        read -p "Remove partial installation directory? [y/N]: " cleanup_choice
-        if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
-            rm -rf "$INSTALL_DIR"
-            print_info "Partial installation removed"
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        print_error "Installation failed with exit code $exit_code. Cleaning up..."
+        
+        # Remove temp files
+        rm -f /tmp/chat_ollama_env
+        
+        # Optionally remove partial installation
+        if [ -d "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/.git/config" ]; then
+            read -p "Remove partial installation directory? [y/N]: " cleanup_choice
+            if [[ "$cleanup_choice" =~ ^[Yy]$ ]]; then
+                rm -rf "$INSTALL_DIR"
+                print_info "Partial installation removed"
+            fi
         fi
     fi
 }
 
-# Trap errors and cleanup
-trap cleanup_on_error ERR
+# Set up error handling without using ERR trap (for shell compatibility)
+handle_error() {
+    cleanup_on_error
+    exit 1
+}
 
 # Main installation function
 main() {
@@ -520,28 +533,29 @@ main() {
     
     echo ""
     
-    # Run installation steps
-    check_python
-    check_ollama
-    check_install_directory
+    # Run installation steps with error handling
+    check_python || handle_error
+    check_ollama || handle_error
+    check_install_directory || handle_error
     
     # Only download if not updating
     if [ ! -d "$INSTALL_DIR" ]; then
-        download_project
+        download_project || handle_error
     fi
     
-    cd "$INSTALL_DIR"
-    create_virtual_env
-    check_ollama_models
-    setup_permissions
+    cd "$INSTALL_DIR" || handle_error
+    create_virtual_env || handle_error
+    check_ollama_models || handle_error
+    setup_permissions || handle_error
     
     # Test installation
     if test_installation; then
-        start_application
+        start_application || handle_error
         show_final_instructions
     else
         print_error "Installation test failed"
         print_info "You may need to troubleshoot manually"
+        handle_error
     fi
     
     # Cleanup temp files
