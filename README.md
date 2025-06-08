@@ -8,13 +8,14 @@ A lightweight web interface for [Ollama](https://ollama.ai/) with persistent cha
 
 - 💬 **Multiple Conversations** - Create, manage, and rename chat sessions
 - 📚 **Persistent History** - SQLite database storage with search functionality
-- 🤖 **Model Selection** - Choose from available Ollama models
+- 🤖 **Model Selection** - Choose from downloaded Ollama models
 - ⚙️ **Advanced Configuration** - JSON-based configuration with performance optimization
 - 📱 **Responsive Design** - Works on desktop and mobile
 - 🚀 **Lightweight** - Minimal resource usage for local development
 - 🎯 **Process Management** - Easy start/stop with background service management
 
 <details>
+
 <summary><b>📸 View Screenshots</b></summary>
 
 ![chat-o-llama - Select model](./docs/assets/screenshot_1.png)
@@ -29,30 +30,50 @@ waiting for response from ollama
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🎯 Automatic Installation (Recommended)
 
-- Python 3.8+, [Ollama](https://ollama.ai/) installed with at least one model downloaded
-
-### Installation & Setup
+**One-command installation with all dependencies:**
 
 ```bash
-# Clone and setup
+curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+```
+
+**Alternative with wget:**
+
+```bash
+wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+```
+
+The automatic installer will:
+- ✅ Check and install Python 3.8+ and Ollama
+- ✅ Download chat-o-llama from GitHub
+- ✅ Set up virtual environment and dependencies
+- ✅ Download recommended Ollama model (qwen2.5:0.5b ~380MB)
+- ✅ Start the application automatically
+- ✅ Provide access URL and management commands
+
+**Access your chat interface at:** `http://localhost:3000`
+
+### 📋 Manual Installation
+
+For detailed manual installation steps, see **[install.md](./docs/install.md)**
+
+**Quick manual setup:**
+
+```bash
+# Prerequisites: Python 3.8+, Ollama with at least one model
 git clone https://github.com/ukkit/chat-o-llama.git
 cd chat-o-llama
-python3 -m venv chat-o-llama
-source bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 chmod +x chat-manager.sh
-
-# Start the application
 ./chat-manager.sh start
-
-# Access at http://localhost:3000
 ```
 
 ## 📋 Usage
 
-**⚠️ Important: Always activate virtual environment first: `source bin/activate`**
+**⚠️ Important: Always activate virtual environment first: `source venv/bin/activate`**
 
 ### Process Management
 
@@ -66,16 +87,6 @@ chmod +x chat-manager.sh
 ./chat-manager.sh help           # Show help
 ```
 
-### First Time Setup
-
-```bash
-# Start Ollama and download a model
-ollama serve
-ollama pull phi3:mini      # 3.8GB - recommended balance
-ollama pull gemma2:2b      # 1.6GB - smaller option
-ollama pull tinyllama      # 637MB - ultra lightweight
-```
-
 ## 🔧 Configuration
 
 ### JSON Configuration File
@@ -84,7 +95,7 @@ Chat-o-llama supports advanced configuration through a `config.json` file. The a
 
 #### Quick Performance Setup
 
-The default `config.json` is precision optimized for CPU-only systems:
+The default `config.json` is precision optimized for CPU-only systems, for detailed documentation see **[config.md](./docs/config.md)**
 
 ```json
 {
@@ -94,37 +105,15 @@ The default `config.json` is precision optimized for CPU-only systems:
   },
   "model_options": {
     "temperature": 0.1,
-    "top_p": 0.95,
-    "top_k": 50,
-    "min_p": 0.01,
-    "typical_p": 0.95,
     "num_predict": 4096,
-    "num_ctx": 8192,
-    "repeat_penalty": 1.15,
-    "repeat_last_n": 64,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "penalize_newline": false,
-    "stop": ["\n\nHuman:", "\n\nUser:"],
-    "seed": null
+    "num_ctx": 8192
   },
   "performance": {
     "context_history_limit": 15,
     "num_thread": -1,
-    "num_gpu": 0,
-    "main_gpu": 0,
-    "num_batch": 1,
-    "num_keep": 10,
-
+    "num_gpu": 0
   },
-  "system_prompt": "You are Dost, a knowledgeable and thoughtful AI assistant. Take time to provide detailed, accurate, and well-reasoned responses. Consider multiple perspectives and provide comprehensive information when helpful.",
-  "response_optimization": {
-    "stream": false,
-    "keep_alive": "10m",
-    "low_vram": false,
-    "f16_kv": false,
-
-  }
+  "system_prompt": "You are Dost, a knowledgeable and thoughtful AI assistant..."
 }
 ```
 
@@ -157,7 +146,7 @@ export OLLAMA_API_URL="http://192.168.1.100:11434"
 
 ### For CPU-Only Systems (Recommended)
 
-The default `config.json` is perfomance optimized for CPU-only systems like the Dell Optiplex series.
+The default `config.json` is performance optimized for CPU-only systems like the Dell Optiplex series.
 
 For faster response, you can use `speed_config.json` file:
 
@@ -184,16 +173,9 @@ Modify `config.json` for GPU acceleration:
 }
 ```
 
-### Traditional Ollama Environment Variables
-
-**For low-resource systems:**
-```bash
-export OLLAMA_NUM_PARALLEL=1
-export OLLAMA_MAX_LOADED_MODELS=1
-export OLLAMA_KEEP_ALIVE=5m
-```
-
 ## 🛠️ API Endpoints
+
+Refer to api documentation for details **[api.md](./docs/api.md)**
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -206,30 +188,25 @@ export OLLAMA_KEEP_ALIVE=5m
 
 ## 🔍 Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
+For detailed troubleshooting steps, see **[troubleshooting.md](./docs/troubleshooting.md)**
+
+**Quick fixes for common issues:**
+
+| Issue | Quick Fix |
+|-------|-----------|
 | Port in use | `./chat-manager.sh start 8080` |
 | Process won't stop | `./chat-manager.sh force-stop` |
-| Ollama not responding | `curl http://localhost:11434/api/tags` |
-| No models | `ollama pull phi3:mini` |
+| Ollama not responding | `ollama serve` then restart app |
+| No models | `ollama pull qwen2.5:0.5b` |
 | Permission denied | `chmod +x chat-manager.sh` |
-| Dependencies missing | `pip install -r requirements.txt` |
-| Slow responses | Create optimized `config.json` (see Configuration) |
-| Config errors | Check JSON syntax with `python -m json.tool config.json` |
+| Dependencies missing | `source venv/bin/activate && pip install -r requirements.txt` |
 
-### Debug Mode
+**Emergency reset:**
 
 ```bash
-source bin/activate
-DEBUG=true ./chat-manager.sh start
-./chat-manager.sh logs
-```
-
-### Reset Database
-
-```bash
-./chat-manager.sh stop
-rm -f data/chat-o-llama.db
+./chat-manager.sh force-stop
+rm -rf venv && python3 -m venv venv
+source venv/bin/activate && pip install -r requirements.txt
 ./chat-manager.sh start
 ```
 
@@ -237,25 +214,38 @@ rm -f data/chat-o-llama.db
 
 ```
 chat-o-llama/
+├── install.sh                 # Auto installer script
 ├── chat-manager.sh             # Process manager
 ├── app.py                      # Flask application
 ├── config.json                 # Default Configuration file
 ├── speed_config.json           # Configuration file for speed over precision
 ├── requirements.txt            # Dependencies
 ├── templates/index.html        # Web interface
+├── INSTALL.md                  # Detailed installation guide
 ├── docs/configuration.md       # Ollama configuration variables
 ├── docs/config_comparison.md   # Comparison of different ollama configurations
 ├── data/                       # Database (auto-created)
-└── logs/                       # Logs direcotry (auto created)
+└── logs/                       # Logs directory (auto created)
 ```
 
-## 🎛️ Configuration Reference
+## 🔄 Updates
 
-- For detailed configuration explanations, see the [Configuration Guide](docs/configuration.md).
+### Automatic Update
 
-- For detailed comparision between default config.json and speed_config.json, see the [Configuration Comparision Guide](docs/config_comparison_guide.md)
+```bash
+cd ~/chat-o-llama
+git pull origin main
+source venv/bin/activate
+pip install -r requirements.txt
+./chat-manager.sh restart
+```
 
-## 📄 License
+### Reinstall with Auto-Installer
+
+```bash
+curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+# Choose option 1 to remove and reinstall
+```
 
 MIT License - see [LICENSE](LICENSE) file.
 
