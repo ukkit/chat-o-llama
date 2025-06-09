@@ -21,7 +21,7 @@ git --version              # Should show git version
 
 **Installation time estimates:**
 - **✅ With all prerequisites:** ~2 minutes
-- **⏳ Missing some prerequisites:** ~5-10 minutes  
+- **⏳ Missing some prerequisites:** ~5-10 minutes
 - **📥 Fresh system (nothing installed):** ~10-20 minutes
 
 ---
@@ -33,7 +33,7 @@ git --version              # Should show git version
 **The easiest way to install chat-o-llama:**
 
 ```bash
-curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 ```
 
 **Alternative methods:**
@@ -78,7 +78,7 @@ chmod +x install.sh
 **With Prerequisites Present:**
 ```
 Downloading chat-o-llama     : 10-30 seconds
-Setting up environment       : 30-60 seconds  
+Setting up environment       : 30-60 seconds
 Installing Python packages   : 30-60 seconds
 Starting application         : 5-10 seconds
 Total                        : ~2 minutes
@@ -103,7 +103,7 @@ Total                        : 5-20 minutes
 ╚══════════════════════════════════════╝
 
 ✓ Python 3.11.2 found at /usr/bin/python3
-✓ Ollama found at /usr/local/bin/ollama  
+✓ Ollama found at /usr/local/bin/ollama
 ✓ Ollama service is running
 ✓ Found existing models: qwen2.5:0.5b
 ✓ chat-o-llama downloaded successfully
@@ -130,7 +130,7 @@ Access at: http://localhost:3000
 ✓ Model downloaded successfully (~380MB)
 ✓ chat-o-llama downloaded successfully
 ✓ Virtual environment created
-✓ Dependencies installed successfully  
+✓ Dependencies installed successfully
 ✓ chat-o-llama started successfully!
 
 🎉 Installation Complete! 🎉
@@ -174,7 +174,7 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull qwen2.5:0.5b  # ~380MB, recommended starter
 ```
 
-#### CentOS/RHEL/Fedora  
+#### CentOS/RHEL/Fedora
 ```bash
 # Install Python 3.8+ and tools
 sudo yum install python3 python3-pip git curl
@@ -219,7 +219,7 @@ ollama pull qwen2.5:0.5b
 git clone https://github.com/ukkit/chat-o-llama.git
 cd chat-o-llama
 
-# 2. Create and activate virtual environment  
+# 2. Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
@@ -340,7 +340,7 @@ curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
 
 ### Internet Connection Impact
 - **Fast connection (50+ Mbps):** Full setup in 5-10 minutes
-- **Medium connection (10-50 Mbps):** Full setup in 10-15 minutes  
+- **Medium connection (10-50 Mbps):** Full setup in 10-15 minutes
 - **Slow connection (<10 Mbps):** Consider pre-downloading models
 
 ### Hardware Performance Tips
@@ -349,7 +349,7 @@ curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
 ollama pull qwen2.5:0.5b  # Use smallest model
 cp speed_config.json config.json  # Use speed-optimized config
 
-# For powerful systems  
+# For powerful systems
 ollama pull phi3:mini  # Use higher quality model
 # Keep default config.json for best quality
 ```

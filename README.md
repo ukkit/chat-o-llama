@@ -21,7 +21,7 @@ A lightweight **PyQt GUI** for running Ollama/llama.cpp models **completely offl
 **For most users (auto-install):**
 
 ```bash
-curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 ```
 
 What happens?
