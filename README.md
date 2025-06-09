@@ -1,20 +1,19 @@
 # chat-o-llama 🦙
 
-**Your private, local AI chatbot**
+**Your lightweight, private, local AI chatbot (no GPU needed**
 
-*No GPU? No cloud? No problem!*
+A lightweight yet powerful web interface for Ollama with markdown rendering, syntax highlighting, and intelligent conversation management.
 
-![Interface-Local GUI-blue](https://img.shields.io/badge/Interface-Local_GUI-blue) ![Python](https://img.shields.io/badge/Python-3.8%2B-green) ![License](https://img.shields.io/badge/License-MIT-yellow) ![Offline-Capable](https://img.shields.io/badge/Offline-100%25-brightgreen)
+![Ollama Chat Interface](https://img.shields.io/badge/Interface-Web%20Based-blue) ![Python](https://img.shields.io/badge/Python-3.8%2B-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-A lightweight **PyQt GUI** for running Ollama/llama.cpp models **completely offline**. Perfect for privacy-focused users and low-end hardware.
+## ✨ Features
 
-## ✨ Why Choose chat-o-llama?
-
-| Feature | chat-o-llama | Alternatives |
-|---------|-------------|--------------|
-| 🔒 **Privacy** | All data stays on your machine | Often cloud-dependent |
-| 💻 **Lightweight** | Runs on CPUs with ~8GB RAM | Heavy Electron apps |
-| 🚫 **No Internet** | Works 100% offline | Needs web connection |
+- 💬 **Multiple Conversations** - Create, manage, and rename chat sessions
+- 📚 **Persistent History** - SQLite database storage with search functionality
+- 🤖 **Model Selection** - Choose from downloaded Ollama models
+- 🚀 **Lightweight** - Minimal resource usage for local development
+- 📝 **Full Markdown rendering** - with GitHub-flavored syntax
+- 📊 **Response metrics** - time, tokens, and speed tracking
 
 ## 🚀 30-Second Quick Start
 
@@ -45,34 +44,6 @@ pip install -r requirements.txt
 
 </details>
 
-## 🌐 100% Offline Usage
-
-1. Download models beforehand:
-
-```bash
-  ollama pull tinyllama
-  Start in offline mode:
-  ```
-
-2. Start in offline mode
-
-  ```bash
-  OLLAMA_HOST=0.0.0.0 ollama serve
-  Launch chat-o-llama:
-  ```
-
-3. Activate python virtual environment
-
-  ```bash
-  source /venv/bin/activate
-  ```
-
-4. Launch chat-o-llama
-
-  ```bash
-  ./chat-manager.sh start
-```
-
 ## 🛠️ Need Help?
 
 Quick Fixes:
@@ -85,6 +56,7 @@ Quick Fixes:
 | Document | Description |
 |---------|-------------|
 | [Installation Guide](./docks/install.md) | Installation Guide |
+| [Features](./docks/features.md) | Detailed features guide |
 | [Startup & Process Guide](./docks/chat_manager_docs.md) | Startup & Process Management via chat-manager.sh |
 | [Config Guide](./docs/config.md) | Configuration Guide |
 | [Config Comparison](./docs/config_comparison.md) | Compare different configs |

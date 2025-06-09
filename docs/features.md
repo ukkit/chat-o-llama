@@ -1,15 +1,17 @@
 # chat-o-llama 🦙 Features
 
-A modern, feature-rich Flask web application for chatting with Ollama models with persistent conversation history and advanced functionality.
+A modern, feature-rich Flask web application for chatting with Ollama models with persistent conversation history, advanced markdown rendering, and professional code syntax highlighting.
 
 ## 🎯 Core Features
 
-### 💬 **Chat Interface**
+### 💬 **Enhanced Chat Interface**
 - **Real-time messaging** with Ollama AI models
-- **Dark theme UI** with GitHub-inspired design using JetBrains Mono font
+- **Professional dark theme UI** with GitHub-inspired design using JetBrains Mono font
 - **Auto-resizing input** textarea that adapts to content length
 - **Keyboard shortcuts** - Enter to send, Shift+Enter for new line
 - **Loading indicators** with "Thinking..." status during AI responses
+- **📝 Full Markdown Support** - Rich text rendering for AI responses
+- **🎨 Syntax Highlighting** - Code blocks with 190+ language support via Highlight.js
 
 ### 🗂️ **Conversation Management**
 - **Persistent chat history** stored in SQLite database
@@ -18,6 +20,7 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - **Conversation deletion** with confirmation dialog
 - **Auto-timestamping** with last updated sorting
 - **New chat creation** with model selection
+- **Model restoration** - automatically restores selected model per conversation
 
 ### 🔍 **Search & Discovery**
 - **Real-time search** across conversations and message content
@@ -27,12 +30,41 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 
 ## 🚀 Enhanced Features
 
-### 📋 **Message Management**
-- **Copy to clipboard** - hover over any message to reveal copy button (📋)
-- **Visual feedback** - copy button changes to ✓ when successful
+### 📋 **Advanced Copy Functionality**
+- **Dual copy system**:
+  - **Message copy** - hover over any message to reveal copy button (📋)
+  - **Code block copy** - dedicated copy buttons for each code block
+- **Smart text extraction** - preserves formatting while removing HTML
+- **Visual feedback** - copy buttons change to ✓ when successful
 - **Toast notifications** for copy confirmations
 - **Cross-browser support** with fallback for older browsers
-- **Clean text extraction** - removes HTML formatting when copying
+- **Clean code extraction** - copies raw code without syntax highlighting markup
+
+### 📝 **Markdown Rendering Engine**
+- **GitHub-Flavored Markdown** support with marked.js
+- **Rich typography** with proper heading hierarchy (H1-H6)
+- **Text formatting**: **bold**, *italic*, ~~strikethrough~~
+- **Lists**: ordered and unordered with proper nesting
+- **Tables** with professional styling and borders
+- **Blockquotes** with left border accent styling
+- **Links** with hover effects and proper contrast
+- **Horizontal rules** for content separation
+- **Inline code** with background highlighting
+- **Mathematical expressions** support (if enabled)
+
+### 💻 **Advanced Code Support**
+- **Syntax highlighting** for 190+ programming languages via Highlight.js
+- **Language detection** with automatic highlighting
+- **Code block headers** showing language type
+- **Individual copy buttons** for each code block
+- **GitHub Dark theme** optimized for readability
+- **Professional formatting** with proper spacing and line numbers
+- **Multi-language support** including:
+  - Python, JavaScript, TypeScript, Java, C++, C#
+  - HTML, CSS, SCSS, JSON, YAML, XML
+  - SQL, Bash, PowerShell, Dockerfile
+  - React, Vue, Angular, Svelte
+  - And 180+ more languages
 
 ### 📊 **Performance Metrics**
 - **Response time tracking** - displays time taken for each AI response
@@ -48,25 +80,49 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - **Multi-model conversations** - switch models between messages
 - **Connection status monitoring** with error handling
 
+## 🎨 **Enhanced User Experience**
+
+### 🖥️ **Professional Interface Design**
+- **Code editor aesthetic** inspired by VS Code and GitHub
+- **Consistent typography** with JetBrains Mono font family
+- **Color-coded elements**:
+  - Headers in gradient blues (#58a6ff to #a5d7ff)
+  - Code in amber (#ffa657)
+  - Emphasis in light blue (#a5d7ff)
+  - Links in GitHub blue (#58a6ff)
+- **Smooth animations** and transitions
+- **Hover effects** for interactive elements
+- **Loading states** with progress indicators
+- **Visual hierarchy** with proper spacing and contrast
+
+### 💡 **Content Presentation**
+- **Structured messaging** with clear role distinction
+- **Code block presentation**:
+  - Language labels in headers
+  - Copy buttons for easy code extraction
+  - Syntax highlighting for readability
+  - Overflow handling for long code
+- **Table formatting** with borders and header styling
+- **Quote styling** with left border accent
+- **List formatting** with proper indentation
+
 ## ⚙️ Advanced Configuration
 
 ### 🔧 **Ollama Integration**
 - **Customizable API endpoints** via environment variables
 - **Timeout configuration** for connection and response handling
-- **Advanced model parameters**:
-  - Temperature control for response creativity
-  - Top-p and top-k sampling parameters
-  - Context length and prediction limits
-  - Repeat penalty adjustment
-  - Custom stop sequences
+- **Advanced model parameters** for fine-tuning AI responses
+- **Custom system prompts** for personality customization
 
 ### 🎛️ **Performance Optimization**
 - **Threading support** for concurrent request handling
 - **Context history limiting** to optimize memory usage
 - **Connection pooling** and keep-alive settings
 - **GPU acceleration support** when available
-- **Memory management** with mlock/mmap options
+- **Memory management** optimization options
 - **Configurable batch processing**
+
+*For detailed configuration options, see [config.md](config.md)*
 
 ### 📁 **Database Features**
 - **SQLite backend** with optimized schema
@@ -81,7 +137,8 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 ### 🔐 **Security**
 - **SQL injection prevention** with parameterized queries
 - **Input validation** and sanitization
-- **XSS protection** with HTML escaping
+- **XSS protection** with HTML escaping for user content
+- **Markdown security** - safe rendering of untrusted content
 - **CSRF token support** (configurable)
 - **Environment variable configuration** for sensitive data
 
@@ -91,6 +148,7 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - **API error recovery** with informative error messages
 - **Database error handling** with transaction rollback
 - **Client-side error notifications** with auto-dismiss
+- **Markdown parsing fallback** - graceful handling of malformed markdown
 
 ### 📱 **Responsive Design**
 - **Mobile-friendly interface** with touch-optimized controls
@@ -98,31 +156,40 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - **Accessible design** with proper contrast and semantic HTML
 - **Keyboard navigation** support
 - **Screen reader compatibility**
+- **Touch-friendly copy buttons** for mobile devices
 
-## 🎨 **User Experience**
+## 🏗️ **Architecture & Code Organization**
 
-### 🖥️ **Interface Design**
-- **Clean, minimal aesthetic** inspired by modern code editors
-- **Syntax highlighting** with JetBrains Mono font family
-- **Smooth animations** and transitions
-- **Hover effects** for interactive elements
-- **Loading states** with progress indicators
-- **Visual hierarchy** with proper spacing and typography
+### 📁 **File Structure**
+```
+project/
+├── app.py                 # Flask backend
+├── config.json           # Configuration
+├── templates/
+│   └── index.html        # Main HTML template
+└── static/
+    ├── css/
+    │   └── styles.css    # Organized CSS styling
+    └── js/
+        └── app.js        # Modular JavaScript
+```
 
-### ⚡ **Performance Features**
-- **Fast message rendering** with optimized DOM updates
-- **Lazy loading** for large conversation histories
-- **Efficient search** with debounced input
-- **Memory optimization** for long-running sessions
-- **Auto-scrolling** to latest messages
-- **Smooth scrolling** behavior
+### 🔧 **Modular Design**
+- **Separation of concerns** - HTML structure, CSS styling, JS logic
+- **Maintainable codebase** with organized file structure
+- **Reusable components** for easy extension
+- **Clean APIs** between frontend and backend
+- **Version control friendly** with isolated changes
 
-### 🔄 **Real-time Updates**
-- **Live conversation list** updates after new messages
-- **Timestamp refresh** for accurate "last updated" times
-- **Model status** monitoring and updates
-- **Connection health** indicators
-- **Auto-retry logic** for failed requests
+### 🌐 **Frontend Architecture**
+- **Vanilla JavaScript** with modern ES6+ features
+- **No framework dependencies** for fast loading
+- **External library integration**:
+  - **marked.js** for markdown parsing
+  - **highlight.js** for syntax highlighting
+- **Modular function organization**
+- **Event-driven architecture**
+- **Progressive enhancement** approach
 
 ## 📊 **Analytics & Insights**
 
@@ -132,6 +199,7 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - **Token usage statistics** and trends
 - **Model performance comparison** across conversations
 - **Usage patterns** and conversation metrics
+- **Markdown usage analytics** - tracking formatted content
 
 ### 🔍 **Search Analytics**
 - **Search result relevance** scoring
@@ -149,13 +217,15 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - **Modular architecture** with separation of concerns
 - **Configuration management** via JSON files
 
-### 🌐 **Frontend (Vanilla JavaScript)**
-- **No framework dependencies** for fast loading
-- **Modern ES6+ JavaScript** with async/await
-- **CSS Grid and Flexbox** for responsive layouts
+### 🌐 **Frontend Technologies**
+- **HTML5** with semantic markup
+- **CSS3** with modern features (Grid, Flexbox, Custom Properties)
+- **Vanilla JavaScript** with ES6+ async/await
+- **External Libraries**:
+  - **marked.js 5.1.1** - Fast markdown parser
+  - **highlight.js 11.9.0** - Syntax highlighting
 - **Web APIs integration** (Clipboard, Fetch, etc.)
-- **Progressive enhancement** approach
-- **Accessibility best practices**
+- **Accessibility best practices** (ARIA, semantic HTML)
 
 ### 🗄️ **Database Schema**
 - **Normalized design** with proper relationships
@@ -166,57 +236,40 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 
 ## 🔧 **Configuration Options**
 
-### ⚙️ **Runtime Configuration**
-```json
-{
-  "timeouts": {
-    "ollama_timeout": 180,
-    "ollama_connect_timeout": 15
-  },
-  "model_options": {
-    "temperature": 0.5,
-    "top_p": 0.8,
-    "top_k": 30,
-    "num_predict": 2048,
-    "num_ctx": 4096,
-    "repeat_penalty": 1.1
-  },
-  "performance": {
-    "context_history_limit": 10,
-    "use_mlock": true,
-    "use_mmap": true,
-    "num_thread": -1,
-    "num_gpu": 0
-  }
-}
-```
-
-### 🌍 **Environment Variables**
-- `OLLAMA_API_URL` - Ollama server endpoint
-- `DATABASE_PATH` - SQLite database file location
-- `PORT` - Flask application port
-- `DEBUG` - Debug mode toggle
-- `SECRET_KEY` - Flask secret key for sessions
+*For detailed configuration settings, environment variables, and examples, see [config.md](config.md)*
 
 ## 🎯 **Use Cases**
 
-### 👩‍💻 **Development**
-- **AI-assisted coding** with context-aware conversations
-- **Documentation generation** with persistent chat history
-- **Code review** and explanation sessions
-- **Architecture discussions** with AI models
+### 👩‍💻 **Development & Programming**
+- **AI-assisted coding** with syntax-highlighted code examples
+- **Code documentation** with markdown formatting
+- **Code review** sessions with formatted explanations
+- **Algorithm discussions** with mathematical notation
+- **API documentation** with structured formatting
+- **Technical tutorials** with step-by-step code examples
 
 ### 📚 **Research & Learning**
-- **Interactive learning** sessions with AI tutors
-- **Research assistance** with conversation context
-- **Note-taking** and knowledge management
-- **Iterative problem solving** with chat history
+- **Interactive learning** with formatted educational content
+- **Research papers** discussion with citation formatting
+- **Mathematical explanations** with proper notation
+- **Scientific documentation** with structured presentations
+- **Note-taking** with rich formatting options
+- **Knowledge base building** with organized content
 
-### 💼 **Business & Productivity**
-- **Meeting preparation** with AI assistance
-- **Content creation** and brainstorming sessions
-- **Customer service** training and simulation
-- **Process documentation** with conversational interface
+### 💼 **Business & Content Creation**
+- **Technical documentation** with professional formatting
+- **Meeting notes** with structured layouts
+- **Content planning** with organized lists and headers
+- **Project documentation** with tables and structured data
+- **Training materials** with formatted content
+- **Process documentation** with clear step-by-step formatting
+
+### 🎓 **Education & Training**
+- **Coding tutorials** with syntax-highlighted examples
+- **Technical explanations** with formatted content
+- **Learning materials** with structured presentations
+- **Assignment help** with proper code formatting
+- **Study guides** with organized information hierarchy
 
 ---
 
@@ -226,20 +279,77 @@ A modern, feature-rich Flask web application for chatting with Ollama models wit
 - Python 3.7 or higher
 - Ollama server running locally or remotely
 - At least one Ollama model installed
+- Modern web browser with JavaScript enabled
 
 ### Quick Start
-1. Clone the repository
-2. Install dependencies: `pip install flask requests`
-3. Start Ollama: `ollama serve`
-4. Run the application: `python app.py`
-5. Open browser to `http://localhost:8080`
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd chat-o-llama
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install flask requests
+   ```
+
+3. **Create directory structure**
+   ```bash
+   mkdir -p static/css static/js
+   ```
+
+4. **Set up files**
+   - Place `index.html` in `templates/` folder
+   - Place `styles.css` in `static/css/` folder  
+   - Place `app.js` in `static/js/` folder
+
+5. **Start Ollama server**
+   ```bash
+   ollama serve
+   ```
+
+6. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+7. **Open browser**
+   Navigate to `http://localhost:8080`
 
 ### Configuration
-1. Create `config.json` for custom settings
-2. Set environment variables as needed
-3. Modify database path if required
-4. Configure Ollama models and parameters
+1. **Create configuration files** - see [config.md](config.md) for detailed setup
+2. **Set environment variables** as needed
+3. **Modify database path** if required
+4. **Configure Ollama models** and parameters
+5. **Customize system prompts** and response settings
+
+### Troubleshooting
+- **Models not loading**: Ensure Ollama is running and models are installed
+- **Markdown not rendering**: Check browser JavaScript console for errors
+- **Copy functionality not working**: Ensure HTTPS or localhost for Clipboard API
+- **Syntax highlighting missing**: Verify highlight.js CDN is accessible
 
 ---
 
-*chat-o-llama combines powerful AI conversation capabilities with a polished user experience, making it ideal for both casual chat and serious AI-assisted work.*
+## 🆕 **Recent Updates**
+
+### **v2.0 - Enhanced Markdown & Code Support**
+- ✅ **Full markdown rendering** with GitHub-flavored syntax
+- ✅ **Syntax highlighting** for 190+ programming languages
+- ✅ **Individual code block copy** buttons
+- ✅ **Professional code presentation** with language headers
+- ✅ **Enhanced copy functionality** with smart text extraction
+- ✅ **Modular file structure** for better maintainability
+- ✅ **Improved error handling** and user feedback
+- ✅ **Mobile-optimized** code viewing and copying
+
+### **Key Improvements**
+- **Better developer experience** with proper code formatting
+- **Enhanced readability** with professional typography
+- **Improved accessibility** with better contrast and structure
+- **Maintainable codebase** with separated concerns
+- **Modern web standards** with progressive enhancement
+
+---
+
+*chat-o-llama now combines powerful AI conversation capabilities with professional markdown rendering and code syntax highlighting, making it the ideal tool for technical discussions, coding assistance, and formatted content creation.*

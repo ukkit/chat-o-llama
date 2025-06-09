@@ -1,254 +1,599 @@
-# Complete Guide to config.json Variables
+# chat-o-llama 🦙 Configuration Guide
 
-## 🕒 Timeouts Section
-Controls how long to wait for Ollama responses and connections.
+Complete configuration reference for customizing your chat-o-llama installation.
 
-### `ollama_timeout` (default: 600 seconds)
-- **What it does**: Maximum time to wait for Ollama to generate a complete response
-- **Performance impact**: Lower values fail faster but may cut off long responses
-- **For your setup**: 600 seconds allows for high-quality, detailed responses
-- **Speed vs Quality**: Higher values enable complex reasoning and longer responses
+## 📋 **Quick Reference**
 
-### `ollama_connect_timeout` (default: 45 seconds)
-- **What it does**: Maximum time to wait when connecting to Ollama server
-- **Performance impact**: Only affects initial connection, not response generation
-- **For your setup**: 45 seconds provides robust connection handling
-- **When to adjust**: Increase for unreliable networks, decrease for faster failure detection
+| Configuration Type | File/Method | Purpose |
+|-------------------|------------|---------|
+| **Runtime Settings** | `config.json` | Model parameters, timeouts, performance |
+| **Environment** | Environment Variables | Server URLs, paths, debugging |
+| **Database** | `DATABASE_PATH` | SQLite database location |
+| **Ollama** | `OLLAMA_API_URL` | Ollama server connection |
 
 ---
 
-## 🎛️ Model Options Section
-Controls how the AI model generates responses - biggest impact on quality vs speed.
+## 🔧 **Runtime Configuration (config.json)**
 
-### `temperature` (default: 0.1, range: 0.0-2.0)
-- **What it does**: Controls randomness/creativity in responses
-- **Performance impact**: Lower values = more predictable, focused responses
-- **Precision optimization**: 0.1 provides highly consistent, reliable outputs
-- **Quality optimization**: Excellent for research, analysis, and factual content
-- **For your setup**: 0.1 maximizes accuracy and reduces hallucinations
+Create a `config.json` file in your project root to customize application behavior.
 
-### `top_p` (default: 0.95, range: 0.0-1.0)
-- **What it does**: Nucleus sampling - considers top % of likely next words
-- **Performance impact**: Higher values allow more diverse vocabulary
-- **Precision optimization**: 0.95 enables comprehensive vocabulary while maintaining focus
-- **Quality trade-off**: High values ensure nuanced expression without repetition
+### **Complete Configuration Example**
 
-### `top_k` (default: 50, range: 1-100+)
-- **What it does**: Considers only the top K most likely next words
-- **Performance impact**: Higher values = more vocabulary options, slower processing
-- **Precision optimization**: 50 provides rich vocabulary for detailed responses
-- **For your hardware**: Balanced setting for comprehensive language generation
-
-### `min_p` (default: 0.01, range: 0.0-1.0)
-- **What it does**: Minimum probability threshold for token selection
-- **Performance impact**: **Alternative to top_p** - can be faster for CPU processing
-- **Precision optimization**: 0.01 allows diverse vocabulary while filtering noise
-- **For your setup**: Works well with typical_p for quality-focused responses
-- **Quality**: More consistent than top_p alone, especially for factual responses
-
-### `typical_p` (default: 0.95, range: 0.0-1.0)
-- **What it does**: Typical sampling - focuses on "typical" token probabilities
-- **Performance impact**: **Can replace top_p/top_k** for better quality/speed balance
-- **Precision optimization**: 0.95 maintains natural language flow with high quality
-- **For your hardware**: Excellent for comprehensive, well-structured responses
-- **Advanced**: Works with min_p for superior precision compared to traditional sampling
-
-### `num_predict` (default: 4096)
-- **What it does**: Maximum number of tokens (words/pieces) in the response
-- **Performance impact**: **BIGGEST QUALITY IMPACT** - directly affects response length
-- **Precision optimization**: 4096 allows detailed, comprehensive responses (2000+ words)
-- **For research**: Enables in-depth analysis, detailed explanations, and complete coverage
-- **Trade-off**: Longer generation time but much more thorough responses
-
-### `num_ctx` (default: 8192)
-- **What it does**: Context window size - how much conversation history to remember
-- **Performance impact**: **MAJOR QUALITY IMPACT** - larger context = better understanding
-- **Precision optimization**: 8192 maintains extensive conversation context and document memory
-- **Memory impact**: Higher values provide superior continuity and reference capability
-- **For your setup**: Excellent for complex, multi-turn discussions and research tasks
-
-### `repeat_penalty` (default: 1.15, range: 0.0-2.0)
-- **What it does**: Prevents the model from repeating the same words/phrases
-- **Performance impact**: Minimal impact on speed, major impact on quality
-- **Recommended**: 1.15 provides strong repetition prevention without awkwardness
-- **Too high**: Makes responses unnatural; too low allows excessive repetition
-
-### `repeat_last_n` (default: 64)
-- **What it does**: How many recent tokens to consider for repeat penalty
-- **Performance impact**: Higher values = better repetition detection, slower processing
-- **Precision optimization**: 64 provides comprehensive repetition checking
-- **For your setup**: Ensures high-quality, varied expression throughout long responses
-- **Memory impact**: Higher values improve content quality at modest performance cost
-
-### `stop` (array of strings)
-- **What it does**: Tokens that tell the model to stop generating
-- **Performance impact**: Can improve response quality by preventing unwanted continuation
-- **For chat**: Includes "Human:", "User:" to prevent model confusion
-- **Quality benefit**: Prevents model from generating responses as both sides of conversation
-
-### `presence_penalty` (default: 0.0, range: -2.0 to 2.0)
-- **What it does**: Penalizes tokens based on whether they appear in the text
-- **Performance impact**: Minimal impact on speed
-- **OpenAI compatibility**: Useful for applications migrating from OpenAI
-- **Precision setting**: 0.0 maintains natural language without artificial constraints
-
-### `frequency_penalty` (default: 0.0, range: -2.0 to 2.0)
-- **What it does**: Penalizes tokens based on their frequency in the text
-- **Performance impact**: Minimal impact on speed
-- **OpenAI compatibility**: Can reduce repetitive content
-- **Precision setting**: 0.0 allows natural repetition when contextually appropriate
-
-### `penalize_newline` (default: false)
-- **What it does**: Whether to apply penalties to newline characters
-- **Performance impact**: Minimal impact on speed
-- **For detailed responses**: false allows natural paragraph structure and formatting
-- **Quality**: Enables better organization in long, comprehensive responses
-
-### `seed` (optional, integer)
-- **What it does**: Fixed seed for reproducible outputs
-- **Performance impact**: No impact on speed
-- **For research**: null enables varied, creative responses
-- **For testing**: Use fixed value (e.g., 42) for consistent results
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 180,
+    "ollama_connect_timeout": 15
+  },
+  "model_options": {
+    "temperature": 0.5,
+    "top_p": 0.8,
+    "top_k": 30,
+    "num_predict": 2048,
+    "num_ctx": 4096,
+    "repeat_penalty": 1.1,
+    "stop": ["\n\nHuman:", "\n\nUser:"]
+  },
+  "performance": {
+    "context_history_limit": 10,
+    "batch_size": 1,
+    "use_mlock": true,
+    "use_mmap": true,
+    "num_thread": -1,
+    "num_gpu": 0
+  },
+  "system_prompt": "Your name is Bhaai, a helpful, friendly, and knowledgeable AI assistant. You have a warm personality and enjoy helping users solve problems. You're curious about technology and always try to provide practical, actionable advice. You occasionally use light humor when appropriate, but remain professional and focused on being genuinely helpful.",
+  "response_optimization": {
+    "stream": false,
+    "keep_alive": "5m",
+    "low_vram": false,
+    "f16_kv": true,
+    "logits_all": false,
+    "vocab_only": false,
+    "use_mmap": true,
+    "use_mlock": false,
+    "embedding_only": false,
+    "numa": false
+  }
+}
+```
 
 ---
 
-## ⚡ Performance Section
-Hardware and processing optimizations for precision-focused operation.
+## ⏱️ **Timeout Configuration**
 
-### `context_history_limit` (default: 15)
-- **What it does**: How many previous messages to include in conversation context
-- **Performance impact**: **MAJOR QUALITY IMPACT** - more messages = better continuity
-- **Precision optimization**: 15 provides extensive conversation memory
-- **Trade-off**: Richer context understanding at modest performance cost
-- **For your setup**: Excellent for research discussions and complex problem-solving
+Controls connection and response timing behavior.
 
-### `use_mlock` (default: true)
-- **What it does**: Locks model in RAM to prevent swapping to disk
-- **Performance impact**: Prevents slowdowns from disk swapping
-- **For your setup**: true if you have sufficient RAM (8GB+)
-- **Precision benefit**: Ensures consistent response times for quality output
+### **Settings**
 
-### `use_mmap` (default: true)
-- **What it does**: Memory-mapped file access for model loading
-- **Performance impact**: Faster model loading and efficient memory usage
-- **Recommendation**: true - almost always beneficial
-- **Hardware**: Especially good for systems optimizing for quality over speed
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 180,
+    "ollama_connect_timeout": 15
+  }
+}
+```
 
-### `num_thread` (default: -1)
-- **What it does**: Number of CPU threads to use (-1 = auto-detect)
-- **For your setup**: Auto-detection optimizes for your hardware
-- **Manual setting**: Use number of CPU cores for maximum processing power
-- **Performance**: More threads = better utilization for quality generation
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `ollama_timeout` | `180` | Maximum seconds to wait for AI response |
+| `ollama_connect_timeout` | `15` | Maximum seconds to wait for connection |
 
-### `num_gpu` (default: 0)
-- **What it does**: Number of GPU layers to use for processing
-- **For your setup**: 0 since you're using CPU-only configuration
-- **With GPU**: Higher values offload more work to GPU for speed
+### **Recommendations**
 
-### `main_gpu` (default: 0)
-- **What it does**: Which GPU to use as the primary GPU (for multi-GPU systems)
-- **For your setup**: Not relevant since you're CPU-only
-- **Multi-GPU**: Specify which GPU (0, 1, 2, etc.) to use as primary
-
-### `num_batch` (default: 1)
-- **What it does**: Batch size for token processing
-- **Performance impact**: **SIGNIFICANT for quality** - affects processing efficiency
-- **For your setup**: 1 provides stable, consistent processing
-- **Quality optimization**: Conservative setting ensures reliable operation
-- **Memory trade-off**: Lower values provide more predictable resource usage
-
-### `num_keep` (default: 10)
-- **What it does**: Number of tokens from the beginning of prompt to always keep
-- **Performance impact**: Higher values preserve more context
-- **Precision optimization**: 10 ensures important prompt instructions are retained
-- **Context**: Maintains instruction clarity in long conversations
-
-### `numa` (default: false)
-- **What it does**: Enable Non-Uniform Memory Access optimizations
-- **For your setup**: false unless you have a multi-socket CPU system
-- **When to enable**: Only for high-end workstations with multiple CPU sockets
-- **Performance**: Can help on NUMA systems, may hurt on single-socket systems
+- **Fast responses**: Set `ollama_timeout` to `60-120` seconds
+- **Complex queries**: Use `180-300` seconds
+- **Slow networks**: Increase `ollama_connect_timeout` to `30`
+- **Local setup**: Keep defaults or reduce timeouts
 
 ---
 
-## 🎯 Response Optimization Section
-Advanced settings for precision-focused response behavior.
+## 🤖 **Model Options**
 
-### `stream` (default: false)
-- **What it does**: Whether to stream response word-by-word or wait for complete response
-- **User experience**: false = complete, polished responses; true = progressive display
-- **For precision work**: false ensures complete processing before display
-- **Quality**: Better for research and detailed responses
+Fine-tune AI model behavior and response characteristics.
 
-### `keep_alive` (default: "10m")
-- **What it does**: How long to keep model loaded in memory after last request
-- **Performance impact**: **IMPORTANT FOR CONSISTENCY** - keeps model ready
-- **Precision optimization**: 10 minutes provides stable, consistent response quality
-- **Memory trade-off**: Longer values maintain optimal model state
-- **For your setup**: Excellent for extended research sessions
+### **Core Parameters**
 
-### `low_vram` (default: false)
-- **What it does**: Optimizations for systems with limited graphics memory
-- **For your setup**: false since you're prioritizing quality over resource constraints
-- **Performance**: Allows full utilization of available system resources
+```json
+{
+  "model_options": {
+    "temperature": 0.5,
+    "top_p": 0.8,
+    "top_k": 30,
+    "num_predict": 2048,
+    "num_ctx": 4096,
+    "repeat_penalty": 1.1,
+    "stop": ["\n\nHuman:", "\n\nUser:"]
+  }
+}
+```
 
-### `f16_kv` (default: false)
-- **What it does**: Use 16-bit floating point for key-value cache (vs 32-bit)
-- **Performance impact**: Reduces memory usage with potential quality impact
-- **Precision setting**: false maintains maximum numerical precision
-- **Quality**: Full precision for highest quality responses
+### **Parameter Details**
+
+| Parameter | Range | Default | Description |
+|-----------|-------|---------|-------------|
+| `temperature` | 0.0-2.0 | `0.5` | Response creativity (0=deterministic, 2=very creative) |
+| `top_p` | 0.0-1.0 | `0.8` | Nucleus sampling threshold |
+| `top_k` | 1-100 | `30` | Consider top K probable next tokens |
+| `num_predict` | 1-8192 | `2048` | Maximum tokens to generate |
+| `num_ctx` | 512-32768 | `4096` | Context window size |
+| `repeat_penalty` | 0.5-2.0 | `1.1` | Penalty for repeating tokens |
+| `stop` | Array | `["\n\nHuman:", "\n\nUser:"]` | Stop generation sequences |
+
+### **Use Case Presets**
+
+#### **Creative Writing**
+```json
+{
+  "temperature": 0.8,
+  "top_p": 0.9,
+  "top_k": 50
+}
+```
+
+#### **Code Generation**
+```json
+{
+  "temperature": 0.2,
+  "top_p": 0.7,
+  "top_k": 20
+}
+```
+
+#### **Analytical Tasks**
+```json
+{
+  "temperature": 0.3,
+  "top_p": 0.8,
+  "top_k": 25
+}
+```
+
+#### **Conversational Chat**
+```json
+{
+  "temperature": 0.5,
+  "top_p": 0.8,
+  "top_k": 30
+}
+```
 
 ---
 
-## 🎯 Precision Optimization Summary
+## ⚡ **Performance Configuration**
 
-**Configuration Philosophy: Quality First**
-This configuration prioritizes response quality, accuracy, and comprehensiveness over speed. Ideal for:
-- Research and analysis tasks
-- Complex problem-solving
-- Educational content creation
-- Professional writing assistance
-- Detailed technical explanations
+Optimize memory usage and processing speed.
 
-**Key Precision Features:**
-1. **Extended Response Length**: 4096 tokens enable 2000+ word responses
-2. **Large Context Window**: 8192 tokens maintain extensive conversation memory
-3. **High Context History**: 15 messages provide rich discussion continuity
-4. **Low Temperature**: 0.1 ensures consistent, reliable outputs
-5. **Advanced Sampling**: min_p + typical_p for superior quality
-6. **Extended Keep-Alive**: 10 minutes for consistent model state
+### **Settings**
 
-**Trade-offs:**
-- **Response Time**: 2-5x longer generation time vs speed-optimized config
-- **Resource Usage**: Higher memory and CPU utilization
-- **Timeout Handling**: 600-second timeout accommodates complex responses
+```json
+{
+  "performance": {
+    "context_history_limit": 10,
+    "batch_size": 1,
+    "use_mlock": true,
+    "use_mmap": true,
+    "num_thread": -1,
+    "num_gpu": 0
+  }
+}
+```
 
-**Hardware Requirements:**
-- **Minimum**: 8GB RAM, 4-core CPU
-- **Recommended**: 16GB+ RAM, 6+ core CPU
-- **Storage**: SSD recommended for model loading
+### **Parameter Details**
 
-**When to Use Precision Config:**
-- Research and analysis tasks
-- Academic or professional writing
-- Complex problem-solving requiring detailed reasoning
-- Educational content requiring comprehensive coverage
-- Technical documentation and explanations
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `context_history_limit` | `10` | Number of previous messages to include |
+| `batch_size` | `1` | Batch processing size |
+| `use_mlock` | `true` | Lock memory pages (prevents swapping) |
+| `use_mmap` | `true` | Use memory mapping for efficiency |
+| `num_thread` | `-1` | CPU threads (-1 = auto-detect) |
+| `num_gpu` | `0` | GPU layers to offload (0 = CPU only) |
 
-**When to Consider Speed Config:**
-- Casual conversations
-- Quick Q&A sessions
-- Limited hardware resources
-- Mobile or battery-powered devices
-- Real-time chat applications
+### **Memory Optimization**
 
-## 🔄 Configuration Switching Guide
+#### **Low Memory Systems (<8GB RAM)**
+```json
+{
+  "context_history_limit": 5,
+  "use_mlock": false,
+  "use_mmap": true,
+  "num_thread": 2
+}
+```
 
-To switch between precision and speed configurations:
+#### **High Memory Systems (>16GB RAM)**
+```json
+{
+  "context_history_limit": 20,
+  "use_mlock": true,
+  "use_mmap": true,
+  "num_thread": -1
+}
+```
 
-1. **Save current config**: `cp config.json config-precision.json`
-2. **Create speed config**: Use reduced values (num_predict: 1024, num_ctx: 2048, etc.)
-3. **Switch configs**: `cp config-speed.json config.json` (restart required)
-4. **Hybrid approach**: Adjust individual parameters based on current task needs
+#### **GPU Acceleration**
+```json
+{
+  "num_gpu": 32,
+  "use_mlock": true,
+  "num_thread": 8
+}
+```
 
-The precision configuration provides the highest quality responses at the cost of longer generation times, making it ideal for professional and research use cases where accuracy and completeness are prioritized over speed.
+---
+
+## 🎭 **System Prompt Customization**
+
+Define your AI assistant's personality and behavior.
+
+### **Default System Prompt**
+```json
+{
+  "system_prompt": "Your name is Bhaai, a helpful, friendly, and knowledgeable AI assistant. You have a warm personality and enjoy helping users solve problems. You're curious about technology and always try to provide practical, actionable advice. You occasionally use light humor when appropriate, but remain professional and focused on being genuinely helpful."
+}
+```
+
+### **Custom Prompt Examples**
+
+#### **Technical Expert**
+```json
+{
+  "system_prompt": "You are a senior software architect with expertise in Python, web development, and system design. Provide detailed technical explanations with code examples when helpful. Focus on best practices, performance, and maintainability."
+}
+```
+
+#### **Creative Writer**
+```json
+{
+  "system_prompt": "You are a creative writing assistant specializing in storytelling, character development, and narrative structure. Help users develop compelling stories with vivid descriptions and engaging dialogue."
+}
+```
+
+#### **Educational Tutor**
+```json
+{
+  "system_prompt": "You are a patient and encouraging tutor. Break down complex concepts into digestible steps, provide examples, and ask clarifying questions to ensure understanding. Adapt your teaching style to the student's level."
+}
+```
+
+---
+
+## 🔄 **Response Optimization**
+
+Control how responses are generated and delivered.
+
+### **Settings**
+
+```json
+{
+  "response_optimization": {
+    "stream": false,
+    "keep_alive": "5m",
+    "low_vram": false,
+    "f16_kv": true,
+    "logits_all": false,
+    "vocab_only": false,
+    "use_mmap": true,
+    "use_mlock": false,
+    "embedding_only": false,
+    "numa": false
+  }
+}
+```
+
+### **Parameter Details**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `stream` | `false` | Stream response tokens (not implemented in UI) |
+| `keep_alive` | `"5m"` | Keep model loaded in memory |
+| `low_vram` | `false` | Optimize for low VRAM systems |
+| `f16_kv` | `true` | Use 16-bit key-value cache |
+| `logits_all` | `false` | Return logits for all tokens |
+| `vocab_only` | `false` | Only load vocabulary |
+| `use_mmap` | `true` | Use memory mapping |
+| `use_mlock` | `false` | Lock model memory |
+| `embedding_only` | `false` | Only generate embeddings |
+| `numa` | `false` | NUMA optimization |
+
+---
+
+## 🌍 **Environment Variables**
+
+Configure application runtime through environment variables.
+
+### **Core Variables**
+
+```bash
+# Ollama Configuration
+OLLAMA_API_URL=http://localhost:11434
+
+# Database Configuration  
+DATABASE_PATH=ollama_chat.db
+
+# Flask Configuration
+PORT=8080
+DEBUG=false
+SECRET_KEY=your-secret-key-change-this
+```
+
+### **Advanced Variables**
+
+```bash
+# Threading Configuration
+FLASK_THREADED=true
+
+# Security
+FLASK_SECRET_KEY=your-production-secret-key
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=chat-o-llama.log
+
+# Development
+FLASK_ENV=production
+FLASK_DEBUG=false
+```
+
+### **Environment Setup Methods**
+
+#### **Option 1: .env File**
+Create a `.env` file in your project root:
+```bash
+OLLAMA_API_URL=http://localhost:11434
+DATABASE_PATH=./data/ollama_chat.db
+PORT=8080
+DEBUG=false
+```
+
+#### **Option 2: System Environment**
+```bash
+export OLLAMA_API_URL=http://localhost:11434
+export DATABASE_PATH=/path/to/database.db
+export PORT=8080
+```
+
+#### **Option 3: Docker Environment**
+```dockerfile
+ENV OLLAMA_API_URL=http://ollama:11434
+ENV DATABASE_PATH=/app/data/chat.db
+ENV PORT=8080
+```
+
+---
+
+## 🗄️ **Database Configuration**
+
+Configure SQLite database settings and location.
+
+### **Database Path Options**
+
+```bash
+# Relative path (default)
+DATABASE_PATH=ollama_chat.db
+
+# Absolute path
+DATABASE_PATH=/var/lib/chat-o-llama/database.db
+
+# Memory database (testing only)
+DATABASE_PATH=:memory:
+```
+
+### **Database Optimization**
+
+#### **Production Settings**
+```python
+# SQLite optimization settings (in app.py)
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA cache_size=10000;
+PRAGMA temp_store=memory;
+```
+
+#### **Development Settings**
+```python
+PRAGMA journal_mode=DELETE;
+PRAGMA synchronous=FULL;
+```
+
+---
+
+## 🚀 **Deployment Configurations**
+
+### **Development Setup**
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 60,
+    "ollama_connect_timeout": 10
+  },
+  "performance": {
+    "context_history_limit": 5,
+    "use_mlock": false
+  },
+  "model_options": {
+    "temperature": 0.7,
+    "num_predict": 1024
+  }
+}
+```
+
+### **Production Setup**
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 180,
+    "ollama_connect_timeout": 15
+  },
+  "performance": {
+    "context_history_limit": 15,
+    "use_mlock": true,
+    "use_mmap": true
+  },
+  "model_options": {
+    "temperature": 0.5,
+    "num_predict": 2048,
+    "num_ctx": 4096
+  }
+}
+```
+
+### **High-Performance Setup**
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 300,
+    "ollama_connect_timeout": 20
+  },
+  "performance": {
+    "context_history_limit": 25,
+    "use_mlock": true,
+    "use_mmap": true,
+    "num_thread": -1,
+    "num_gpu": 32
+  },
+  "model_options": {
+    "temperature": 0.5,
+    "num_predict": 4096,
+    "num_ctx": 8192
+  }
+}
+```
+
+---
+
+## 🛠️ **Configuration Validation**
+
+### **Testing Your Configuration**
+
+```bash
+# Test Ollama connection
+curl http://localhost:11434/api/tags
+
+# Test Flask app
+python -c "from app import init_db; init_db()"
+
+# Validate config.json
+python -c "import json; print(json.load(open('config.json')))"
+```
+
+### **Common Configuration Issues**
+
+| Issue | Symptom | Solution |
+|-------|---------|----------|
+| **Model not loading** | "No models available" | Check `OLLAMA_API_URL` and Ollama status |
+| **Slow responses** | Timeouts or delays | Increase `ollama_timeout`, reduce `num_predict` |
+| **Memory issues** | System slowdown | Reduce `context_history_limit`, disable `use_mlock` |
+| **JSON errors** | Config not loading | Validate JSON syntax in `config.json` |
+| **Database errors** | Conversation not saving | Check `DATABASE_PATH` permissions |
+
+### **Performance Tuning**
+
+#### **CPU-Optimized**
+```json
+{
+  "performance": {
+    "num_thread": -1,
+    "num_gpu": 0,
+    "use_mmap": true,
+    "use_mlock": false
+  }
+}
+```
+
+#### **GPU-Optimized**
+```json
+{
+  "performance": {
+    "num_gpu": 32,
+    "num_thread": 4,
+    "use_mlock": true
+  }
+}
+```
+
+#### **Memory-Constrained**
+```json
+{
+  "performance": {
+    "context_history_limit": 3,
+    "use_mlock": false,
+    "low_vram": true
+  },
+  "model_options": {
+    "num_ctx": 2048,
+    "num_predict": 1024
+  }
+}
+```
+
+---
+
+## 📝 **Configuration Templates**
+
+### **Minimal Configuration**
+```json
+{
+  "model_options": {
+    "temperature": 0.5
+  }
+}
+```
+
+### **Balanced Configuration**
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 120
+  },
+  "model_options": {
+    "temperature": 0.5,
+    "num_predict": 2048
+  },
+  "performance": {
+    "context_history_limit": 10
+  }
+}
+```
+
+### **Maximum Configuration**
+```json
+{
+  "timeouts": {
+    "ollama_timeout": 300,
+    "ollama_connect_timeout": 20
+  },
+  "model_options": {
+    "temperature": 0.5,
+    "top_p": 0.8,
+    "top_k": 30,
+    "num_predict": 4096,
+    "num_ctx": 8192,
+    "repeat_penalty": 1.1,
+    "stop": ["\n\nHuman:", "\n\nUser:", "\n\nAssistant:"]
+  },
+  "performance": {
+    "context_history_limit": 20,
+    "batch_size": 1,
+    "use_mlock": true,
+    "use_mmap": true,
+    "num_thread": -1,
+    "num_gpu": 32
+  },
+  "system_prompt": "You are an expert AI assistant with deep knowledge across multiple domains. Provide detailed, accurate, and helpful responses.",
+  "response_optimization": {
+    "stream": false,
+    "keep_alive": "10m",
+    "low_vram": false,
+    "f16_kv": true,
+    "use_mmap": true,
+    "use_mlock": true
+  }
+}
+```
+
+---
+
+*For more information about Ollama model parameters, visit the [Ollama documentation](https://github.com/ollama/ollama/blob/main/docs/modelfile.md#parameter).*
