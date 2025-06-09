@@ -224,6 +224,7 @@
             margin-bottom: 20px;
             display: flex;
             align-items: flex-start;
+            position: relative;
         }
 
         .message.user {
@@ -257,6 +258,48 @@
             opacity: 0.7;
             margin-top: 6px;
             font-weight: 400;
+        }
+
+        .message-stats {
+            font-size: 9px;
+            opacity: 0.6;
+            margin-top: 4px;
+            color: #7d8590;
+            font-style: italic;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            color: #58a6ff;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(88, 166, 255, 0.2);
+            border-color: rgba(88, 166, 255, 0.5);
+        }
+
+        .copy-btn.copied {
+            background: rgba(34, 134, 58, 0.2);
+            border-color: rgba(34, 134, 58, 0.5);
+            color: #56d364;
+        }
+
+        .message:hover .copy-btn {
+            display: flex;
         }
 
         .input-container {
@@ -311,7 +354,7 @@
 
         .loading {
             padding: 12px 16px;
-            color: #58a6ff;  /* Changed from #7d8590 */
+            color: #58a6ff;
             font-style: italic;
         }
 
@@ -366,6 +409,24 @@
             color: #7d8590;
         }
 
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #238636;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .copy-notification.show {
+            opacity: 1;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 250px;
@@ -417,10 +478,14 @@
         </div>
     </div>
 
+    <!-- Copy notification -->
+    <div class="copy-notification" id="copyNotification">Copied to clipboard!</div>
+
     <script>
         let currentConversationId = null;
         let availableModels = [];
         let isLoading = false;
+        let messageStartTime = null;
 
         // Initialize the app
         async function init() {
@@ -695,6 +760,190 @@
             input.select();
         }
 
+        // Copy message content to clipboard
+        async function copyMessage(button) {
+            try {
+                // Get the message content from the parent message div
+                const messageContent = button.closest('.message-content');
+                
+                // Find the actual message text content (excluding meta and stats)
+                let textContent = '';
+                
+                // Method 1: Try to get just the main content div
+                const allChildren = messageContent.children;
+                for (let child of allChildren) {
+                    if (!child.classList.contains('message-meta') && 
+                        !child.classList.contains('message-stats') && 
+                        !child.classList.contains('copy-btn')) {
+                        
+                        // Get text content and convert <br> to newlines
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = child.innerHTML;
+                        
+                        // Convert <br> tags to newlines
+                        const brTags = tempDiv.querySelectorAll('br');
+                        brTags.forEach(br => br.replaceWith('\n'));
+                        
+                        textContent = tempDiv.textContent || tempDiv.innerText || '';
+                        break;
+                    }
+                }
+                
+                // Method 2: If method 1 fails, try extracting from the whole content
+                if (!textContent.trim()) {
+                    const clonedContent = messageContent.cloneNode(true);
+                    
+                    // Remove meta, stats, and copy button
+                    const metaDiv = clonedContent.querySelector('.message-meta');
+                    const statsDiv = clonedContent.querySelector('.message-stats');
+                    const copyBtn = clonedContent.querySelector('.copy-btn');
+                    
+                    if (metaDiv) metaDiv.remove();
+                    if (statsDiv) statsDiv.remove();
+                    if (copyBtn) copyBtn.remove();
+                    
+                    // Convert <br> to newlines
+                    clonedContent.innerHTML = clonedContent.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                    
+                    textContent = clonedContent.textContent || clonedContent.innerText || '';
+                }
+                
+                // Clean up the text and remove <think> tags
+                textContent = textContent.trim();
+                
+                // Remove <think>...</think> blocks (for models that use thinking)
+                textContent = textContent.replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '');
+                
+                // Clean up extra whitespace that might be left after removing think tags
+                textContent = textContent.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+                
+                if (!textContent) {
+                    throw new Error('No text content found to copy');
+                }
+                
+                // Check if modern clipboard API is available
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(textContent);
+                    
+                    // Verify the copy worked
+                    try {
+                        const clipboardText = await navigator.clipboard.readText();
+                        if (clipboardText === textContent) {
+                            showCopySuccess(button);
+                        } else {
+                            throw new Error('Copy verification failed');
+                        }
+                    } catch (verifyErr) {
+                        // Can't verify, but assume it worked if no error thrown
+                        showCopySuccess(button);
+                    }
+                } else {
+                    // Fallback for older browsers or non-HTTPS
+                    const success = copyTextFallback(textContent);
+                    if (success) {
+                        showCopySuccess(button);
+                    } else {
+                        showCopyError(button);
+                    }
+                }
+                
+            } catch (err) {
+                console.error('Copy failed:', err);
+                showCopyError(button);
+            }
+        }
+
+        // Fallback copy method for older browsers or non-HTTPS
+        function copyTextFallback(text) {
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                
+                // Style the textarea to be invisible but functional
+                textArea.style.position = 'fixed';
+                textArea.style.top = '0';
+                textArea.style.left = '0';
+                textArea.style.width = '2em';
+                textArea.style.height = '2em';
+                textArea.style.padding = '0';
+                textArea.style.border = 'none';
+                textArea.style.outline = 'none';
+                textArea.style.boxShadow = 'none';
+                textArea.style.background = 'transparent';
+                textArea.style.opacity = '0';
+                textArea.setAttribute('readonly', '');
+                
+                document.body.appendChild(textArea);
+                
+                // Focus and select
+                textArea.focus();
+                textArea.setSelectionRange(0, textArea.value.length);
+                textArea.select();
+                
+                // Try to copy
+                const successful = document.execCommand('copy');
+                
+                // Clean up
+                document.body.removeChild(textArea);
+                
+                return successful;
+                
+            } catch (err) {
+                console.error('Fallback copy error:', err);
+                return false;
+            }
+        }
+
+        // Show copy success feedback
+        function showCopySuccess(button) {
+            button.textContent = '✓';
+            button.classList.add('copied');
+            showCopyNotification();
+            
+            setTimeout(() => {
+                button.textContent = '📋';
+                button.classList.remove('copied');
+            }, 2000);
+        }
+
+        // Show copy error feedback
+        function showCopyError(button) {
+            button.textContent = '❌';
+            button.style.color = '#da3633';
+            
+            // Show error notification instead of success
+            const notification = document.getElementById('copyNotification');
+            notification.textContent = 'Copy failed!';
+            notification.style.backgroundColor = '#da3633';
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                button.textContent = '📋';
+                button.style.color = '';
+                notification.classList.remove('show');
+                // Reset notification
+                setTimeout(() => {
+                    notification.textContent = 'Copied to clipboard!';
+                    notification.style.backgroundColor = '#238636';
+                }, 300);
+            }, 2000);
+        }
+
+        // Show copy notification
+        function showCopyNotification() {
+            const notification = document.getElementById('copyNotification');
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        }
+
+        // Calculate tokens (rough estimation)
+        function estimateTokens(text) {
+            // Rough estimation: ~4 characters per token for English text
+            return Math.ceil(text.length / 4);
+        }
+
         // Send message
         async function sendMessage() {
             if (isLoading || !currentConversationId) return;
@@ -704,6 +953,9 @@
             const selectedModel = document.getElementById('modelSelect').value;
 
             if (!message) return;
+
+            // Record start time for performance measurement
+            messageStartTime = Date.now();
 
             // Add user message to chat
             addMessageToChat('user', message);
@@ -734,11 +986,15 @@
 
                 const data = await response.json();
 
+                // Calculate response time
+                const responseTime = messageStartTime ? Date.now() - messageStartTime : 0;
+                const estimatedTokens = estimateTokens(data.response);
+
                 // Remove loading
                 loadingDiv.remove();
 
-                // Add assistant response
-                addMessageToChat('assistant', data.response, data.model);
+                // Add assistant response with stats
+                addMessageToChat('assistant', data.response, data.model, null, responseTime, estimatedTokens);
 
                 // Reload conversations to update timestamp
                 await loadConversations();
@@ -751,22 +1007,49 @@
                 document.getElementById('sendBtn').disabled = false;
                 document.getElementById('sendBtn').textContent = 'Send';
                 messageInput.focus();
+                messageStartTime = null;
             }
         }
 
         // Add message to chat
-        function addMessageToChat(role, content, model = null, timestamp = null) {
+        function addMessageToChat(role, content, model = null, timestamp = null, responseTime = null, tokens = null) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
 
             const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
             const modelInfo = model && role === 'assistant' ? ` • ${model}` : '';
+            
+            // Generate unique ID for the copy button
+            const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            
+            // Build stats string
+            let statsString = '';
+            if (role === 'assistant' && (responseTime || tokens)) {
+                const stats = [];
+                if (responseTime) {
+                    stats.push(`${(responseTime / 1000).toFixed(1)}s`);
+                }
+                if (tokens) {
+                    stats.push(`~${tokens} tokens`);
+                    if (responseTime) {
+                        const tokensPerSecond = (tokens / (responseTime / 1000)).toFixed(1);
+                        stats.push(`${tokensPerSecond} tok/s`);
+                    }
+                }
+                if (stats.length > 0) {
+                    statsString = `<div class="message-stats">${stats.join(' • ')}</div>`;
+                }
+            }
+
+            const contentHtml = escapeHtml(content).replace(/\n/g, '<br>');
 
             messageDiv.innerHTML = `
                 <div class="message-content">
-                    ${escapeHtml(content).replace(/\n/g, '<br>')}
+                    ${contentHtml}
                     <div class="message-meta">${time}${modelInfo}</div>
+                    ${statsString}
+                    <button class="copy-btn" onclick="copyMessage(this)" title="Copy message">📋</button>
                 </div>
             `;
 
@@ -889,3 +1172,4 @@
     </script>
 </body>
 </html>
+                

@@ -2,12 +2,14 @@
 """
 Ollama Chat Frontend with History Storage
 A Flask web application for chatting with Ollama models with persistent history.
+Enhanced with response metrics tracking.
 """
 
 import os
 import sqlite3
 import requests
 import json
+import time
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, g
 import logging
@@ -20,8 +22,10 @@ app = Flask(__name__)
 # For future use
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'
 
-# Load configuration from JSON file
+# Enable threading for better performance
+app.config['THREADED'] = True
 
+# Load configuration from JSON file
 def load_config():
     """Load configuration from config.json file."""
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -88,7 +92,7 @@ DATABASE_PATH = os.getenv('DATABASE_PATH', 'ollama_chat.db')
 OLLAMA_TIMEOUT = CONFIG['timeouts']['ollama_timeout']
 OLLAMA_CONNECT_TIMEOUT = CONFIG['timeouts']['ollama_connect_timeout']
 
-# Database schema
+# Enhanced database schema with metrics tracking
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,11 +109,14 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT NOT NULL,
     model TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    response_time_ms INTEGER,
+    estimated_tokens INTEGER,
     FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
 '''
 
 
@@ -141,8 +148,14 @@ def close_db_on_teardown(error):
     close_db(error)
 
 
+def estimate_tokens(text):
+    """Estimate token count based on character length."""
+    # Rough estimation: ~4 characters per token for English text
+    return max(1, len(text) // 4)
+
+
 class OllamaAPI:
-    """Ollama API client."""
+    """Ollama API client with enhanced metrics tracking."""
 
     @staticmethod
     def get_models():
@@ -180,7 +193,9 @@ class OllamaAPI:
 
     @staticmethod
     def generate_response(model, prompt, conversation_history=None):
-        """Generate response from Ollama."""
+        """Generate response from Ollama with timing metrics."""
+        start_time = time.time()
+        
         try:
             # Get system prompt from config
             system_prompt = CONFIG['system_prompt']
@@ -238,29 +253,75 @@ class OllamaAPI:
                 timeout=(OLLAMA_CONNECT_TIMEOUT, OLLAMA_TIMEOUT)
             )
 
+            # Calculate response time
+            response_time = int((time.time() - start_time) * 1000)  # Convert to milliseconds
+
             if response.status_code == 200:
                 data = response.json()
-                return data.get('response', 'No response generated')
+                response_text = data.get('response', 'No response generated')
+                
+                # Estimate tokens
+                estimated_tokens = estimate_tokens(response_text)
+                
+                # Try to get actual token counts from response if available
+                if 'eval_count' in data:
+                    estimated_tokens = data['eval_count']
+                
+                return {
+                    'response': response_text,
+                    'response_time_ms': response_time,
+                    'estimated_tokens': estimated_tokens,
+                    'eval_count': data.get('eval_count'),
+                    'eval_duration': data.get('eval_duration'),
+                    'load_duration': data.get('load_duration'),
+                    'prompt_eval_count': data.get('prompt_eval_count'),
+                    'prompt_eval_duration': data.get('prompt_eval_duration'),
+                    'total_duration': data.get('total_duration')
+                }
             else:
-                return f"Error: HTTP {response.status_code}"
+                return {
+                    'response': f"Error: HTTP {response.status_code}",
+                    'response_time_ms': response_time,
+                    'estimated_tokens': 0
+                }
 
         except requests.exceptions.ReadTimeout as e:
+            response_time = int((time.time() - start_time) * 1000)
             logger.error(
                 f"Ollama read timeout after {OLLAMA_TIMEOUT} seconds: {e}")
-            return f"Response timed out after {OLLAMA_TIMEOUT} seconds. Try a shorter prompt or increase timeout."
+            return {
+                'response': f"Response timed out after {OLLAMA_TIMEOUT} seconds. Try a shorter prompt or increase timeout.",
+                'response_time_ms': response_time,
+                'estimated_tokens': 0
+            }
         except requests.exceptions.ConnectTimeout as e:
+            response_time = int((time.time() - start_time) * 1000)
             logger.error(f"Ollama connection timeout: {e}")
-            return "Connection to Ollama timed out. Make sure Ollama is running and accessible."
+            return {
+                'response': "Connection to Ollama timed out. Make sure Ollama is running and accessible.",
+                'response_time_ms': response_time,
+                'estimated_tokens': 0
+            }
         except requests.RequestException as e:
+            response_time = int((time.time() - start_time) * 1000)
             logger.error(f"Ollama API error: {e}")
-            return f"Error connecting to Ollama: {str(e)}"
+            return {
+                'response': f"Error connecting to Ollama: {str(e)}",
+                'response_time_ms': response_time,
+                'estimated_tokens': 0
+            }
         except Exception as e:
+            response_time = int((time.time() - start_time) * 1000)
             logger.error(f"Unexpected error: {e}")
-            return f"Unexpected error: {str(e)}"
+            return {
+                'response': f"Unexpected error: {str(e)}",
+                'response_time_ms': response_time,
+                'estimated_tokens': 0
+            }
 
 
 class ConversationManager:
-    """Manage conversations and messages."""
+    """Manage conversations and messages with enhanced metrics."""
 
     @staticmethod
     def create_conversation(title, model):
@@ -309,12 +370,12 @@ class ConversationManager:
         db.commit()
 
     @staticmethod
-    def add_message(conversation_id, role, content, model=None):
-        """Add message to conversation."""
+    def add_message(conversation_id, role, content, model=None, response_time_ms=None, estimated_tokens=None):
+        """Add message to conversation with metrics."""
         db = get_db()
         db.execute(
-            'INSERT INTO messages (conversation_id, role, content, model) VALUES (?, ?, ?, ?)',
-            (conversation_id, role, content, model)
+            'INSERT INTO messages (conversation_id, role, content, model, response_time_ms, estimated_tokens) VALUES (?, ?, ?, ?, ?, ?)',
+            (conversation_id, role, content, model, response_time_ms, estimated_tokens)
         )
         db.commit()
         ConversationManager.update_conversation_timestamp(conversation_id)
@@ -328,9 +389,24 @@ class ConversationManager:
             (conversation_id,)
         ).fetchall()
 
+    @staticmethod
+    def get_conversation_stats(conversation_id):
+        """Get conversation statistics."""
+        db = get_db()
+        stats = db.execute('''
+            SELECT 
+                COUNT(*) as total_messages,
+                COUNT(CASE WHEN role = 'assistant' THEN 1 END) as assistant_messages,
+                AVG(CASE WHEN role = 'assistant' AND response_time_ms IS NOT NULL THEN response_time_ms END) as avg_response_time,
+                SUM(CASE WHEN role = 'assistant' AND estimated_tokens IS NOT NULL THEN estimated_tokens END) as total_tokens
+            FROM messages 
+            WHERE conversation_id = ?
+        ''', (conversation_id,)).fetchone()
+        
+        return dict(stats) if stats else {}
+
+
 # Routes
-
-
 @app.route('/')
 def index():
     """Main chat interface."""
@@ -391,15 +467,18 @@ def api_create_conversation():
 
 @app.route('/api/conversations/<int:conversation_id>')
 def api_get_conversation(conversation_id):
-    """Get conversation with messages."""
+    """Get conversation with messages and stats."""
     conversation = ConversationManager.get_conversation(conversation_id)
     if not conversation:
         return jsonify({'error': 'Conversation not found'}), 404
 
     messages = ConversationManager.get_messages(conversation_id)
+    stats = ConversationManager.get_conversation_stats(conversation_id)
+    
     return jsonify({
         'conversation': dict(conversation),
-        'messages': [dict(msg) for msg in messages]
+        'messages': [dict(msg) for msg in messages],
+        'stats': stats
     })
 
 
@@ -438,7 +517,7 @@ def api_update_conversation(conversation_id):
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
-    """Send message and get response."""
+    """Send message and get response with enhanced metrics."""
     data = request.get_json()
     conversation_id = data.get('conversation_id')
     message = data.get('message')
@@ -448,23 +527,42 @@ def api_chat():
         return jsonify({'error': 'Missing conversation_id or message'}), 400
 
     # Add user message
-    ConversationManager.add_message(conversation_id, 'user', message)
+    user_tokens = estimate_tokens(message)
+    ConversationManager.add_message(
+        conversation_id, 'user', message, model, None, user_tokens
+    )
 
     # Get conversation history for context
     messages = ConversationManager.get_messages(conversation_id)
     history = [{'role': msg['role'], 'content': msg['content']}
                for msg in messages[:-1]]
 
-    # Generate response
-    response = OllamaAPI.generate_response(model, message, history)
+    # Generate response with metrics
+    response_data = OllamaAPI.generate_response(model, message, history)
 
-    # Add assistant response
+    # Add assistant response with metrics
     ConversationManager.add_message(
-        conversation_id, 'assistant', response, model)
+        conversation_id, 
+        'assistant', 
+        response_data['response'], 
+        model,
+        response_data['response_time_ms'],
+        response_data['estimated_tokens']
+    )
 
     return jsonify({
-        'response': response,
-        'model': model
+        'response': response_data['response'],
+        'model': model,
+        'response_time_ms': response_data['response_time_ms'],
+        'estimated_tokens': response_data['estimated_tokens'],
+        'metrics': {
+            'eval_count': response_data.get('eval_count'),
+            'eval_duration': response_data.get('eval_duration'),
+            'load_duration': response_data.get('load_duration'),
+            'prompt_eval_count': response_data.get('prompt_eval_count'),
+            'prompt_eval_duration': response_data.get('prompt_eval_duration'),
+            'total_duration': response_data.get('total_duration')
+        }
     })
 
 
@@ -478,7 +576,7 @@ def api_search():
     db = get_db()
     results = db.execute('''
         SELECT DISTINCT c.id, c.title, c.model, c.updated_at,
-               m.content, m.role, m.timestamp
+               m.content, m.role, m.timestamp, m.response_time_ms, m.estimated_tokens
         FROM conversations c
         JOIN messages m ON c.id = m.conversation_id
         WHERE m.content LIKE ? OR c.title LIKE ?
@@ -488,6 +586,31 @@ def api_search():
 
     return jsonify({
         'results': [dict(result) for result in results]
+    })
+
+
+@app.route('/api/stats/<int:conversation_id>')
+def api_conversation_stats(conversation_id):
+    """Get detailed statistics for a conversation."""
+    stats = ConversationManager.get_conversation_stats(conversation_id)
+    
+    # Get additional detailed stats
+    db = get_db()
+    detailed_stats = db.execute('''
+        SELECT 
+            role,
+            COUNT(*) as count,
+            AVG(LENGTH(content)) as avg_length,
+            SUM(estimated_tokens) as total_tokens,
+            AVG(response_time_ms) as avg_response_time
+        FROM messages 
+        WHERE conversation_id = ?
+        GROUP BY role
+    ''', (conversation_id,)).fetchall()
+    
+    return jsonify({
+        'summary': stats,
+        'by_role': [dict(stat) for stat in detailed_stats]
     })
 
 
@@ -508,9 +631,10 @@ if __name__ == '__main__':
         f"Context history limit: {CONFIG['performance']['context_history_limit']} messages")
     logger.info(f"Temperature: {CONFIG['model_options']['temperature']}")
 
-    # Run the app
+    # Run the app with threading enabled
     app.run(
         host='0.0.0.0',
         port=int(os.getenv('PORT', 8080)),
-        debug=os.getenv('DEBUG', 'False').lower() == 'true'
+        debug=os.getenv('DEBUG', 'False').lower() == 'true',
+        threaded=True
     )
