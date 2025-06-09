@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# chat-o-llama Auto Installer
-# Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
-# Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
+# chat-o-llama Auto Installer (Non-Interactive Version)
+# Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
+# Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 
 # For better compatibility, try to use bash if available
 if command -v bash >/dev/null 2>&1; then
@@ -24,19 +24,26 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
+# Configuration with environment variable overrides
 REPO_URL="https://github.com/ukkit/chat-o-llama.git"
-INSTALL_DIR="$HOME/chat-o-llama"
-DEFAULT_PORT=3000
-RECOMMENDED_MODEL="qwen2.5:0.5b"
+INSTALL_DIR="${CHAT_OLLAMA_INSTALL_DIR:-$HOME/chat-o-llama}"
+DEFAULT_PORT="${CHAT_OLLAMA_PORT:-3000}"
+RECOMMENDED_MODEL="${CHAT_OLLAMA_MODEL:-qwen2.5:0.5b}"
 FALLBACK_MODEL="tinyllama"
 MIN_PYTHON_VERSION="3.8"
+
+# Non-interactive configuration (environment variables)
+AUTO_CONFIRM="${CHAT_OLLAMA_AUTO_CONFIRM:-Y}"
+AUTO_DOWNLOAD_MODEL="${CHAT_OLLAMA_DOWNLOAD_MODEL:-Y}"
+HANDLE_EXISTING="${CHAT_OLLAMA_HANDLE_EXISTING:-1}"  # 1=remove, 2=update, 3=cancel
+AUTO_START="${CHAT_OLLAMA_AUTO_START:-true}"
+FORCE_REINSTALL="${CHAT_OLLAMA_FORCE_REINSTALL:-true}"
 
 # Function to print colored output
 print_header() {
     echo -e "${PURPLE}╔══════════════════════════════════════╗${NC}"
     echo -e "${PURPLE}║           chat-o-llama 🦙            ║${NC}"
-    echo -e "${PURPLE}║        Auto Installer Script        ║${NC}"
+    echo -e "${PURPLE}║     Non-Interactive Installer       ║${NC}"
     echo -e "${PURPLE}╚══════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -119,13 +126,31 @@ check_python() {
 
     if [ -z "$python_cmd" ]; then
         print_error "Python $MIN_PYTHON_VERSION or higher not found!"
-        echo ""
-        print_info "Please install Python $MIN_PYTHON_VERSION+ from:"
-        print_info "• Ubuntu/Debian: sudo apt update && sudo apt install python3 python3-pip python3-venv"
-        print_info "• CentOS/RHEL: sudo yum install python3 python3-pip"
-        print_info "• macOS: brew install python3"
-        print_info "• Or download from: https://python.org/downloads"
-        exit 1
+        print_info "Installing Python automatically..."
+        
+        if command_exists apt-get; then
+            sudo apt update >/dev/null 2>&1 && sudo apt install -y python3 python3-pip python3-venv >/dev/null 2>&1
+        elif command_exists yum; then
+            sudo yum install -y python3 python3-pip >/dev/null 2>&1
+        elif command_exists brew; then
+            brew install python3 >/dev/null 2>&1
+        else
+            print_error "Cannot install Python automatically."
+            print_info "Please install Python $MIN_PYTHON_VERSION+ manually:"
+            print_info "• Ubuntu/Debian: sudo apt update && sudo apt install python3 python3-pip python3-venv"
+            print_info "• CentOS/RHEL: sudo yum install python3 python3-pip"
+            print_info "• macOS: brew install python3"
+            exit 1
+        fi
+        
+        # Re-check after installation
+        python_cmd="python3"
+        python_version=$(get_python_version "$python_cmd")
+        
+        if [ "$python_version" = "0.0" ]; then
+            print_error "Python installation failed"
+            exit 1
+        fi
     fi
 
     print_success "Python $python_version found at $(command -v "$python_cmd")"
@@ -133,11 +158,11 @@ check_python() {
 
     # Check if pip is available
     if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
-        print_warning "pip not found, attempting to install..."
+        print_info "Installing pip..."
         if command_exists apt-get; then
-            sudo apt-get update && sudo apt-get install -y python3-pip
+            sudo apt-get update >/dev/null 2>&1 && sudo apt-get install -y python3-pip >/dev/null 2>&1
         elif command_exists yum; then
-            sudo yum install -y python3-pip
+            sudo yum install -y python3-pip >/dev/null 2>&1
         else
             print_error "pip not found and cannot auto-install. Please install pip manually."
             exit 1
@@ -146,9 +171,9 @@ check_python() {
 
     # Check if venv module is available
     if ! "$python_cmd" -m venv --help >/dev/null 2>&1; then
-        print_warning "venv module not found, attempting to install..."
+        print_info "Installing venv module..."
         if command_exists apt-get; then
-            sudo apt-get install -y python3-venv
+            sudo apt-get install -y python3-venv >/dev/null 2>&1
         else
             print_error "venv module not available. Please install python3-venv package."
             exit 1
@@ -161,17 +186,14 @@ check_ollama() {
     print_step "Checking Ollama installation..."
 
     if ! command_exists ollama; then
-        print_error "Ollama not found!"
-        echo ""
         print_info "Installing Ollama..."
-        print_info "Running: curl -fsSL https://ollama.ai/install.sh | sh"
-
-        # Install Ollama
-        if curl -fsSL https://ollama.ai/install.sh | sh; then
+        
+        # Install Ollama using their non-interactive installer
+        if curl -fsSL https://ollama.com/install.sh | sh >/dev/null 2>&1; then
             print_success "Ollama installed successfully!"
         else
             print_error "Failed to install Ollama automatically."
-            print_info "Please install Ollama manually from: https://ollama.ai"
+            print_info "Please install Ollama manually from: https://ollama.com"
             exit 1
         fi
     else
@@ -180,13 +202,13 @@ check_ollama() {
 
     # Check if Ollama service is running
     if ! ollama list >/dev/null 2>&1; then
-        print_warning "Ollama service not running, attempting to start..."
+        print_info "Starting Ollama service..."
 
         # Try to start Ollama service in background
         if command_exists systemctl; then
             # Try systemd service
             if systemctl is-enabled ollama >/dev/null 2>&1; then
-                sudo systemctl start ollama
+                sudo systemctl start ollama >/dev/null 2>&1
                 sleep 3
             fi
         fi
@@ -210,43 +232,46 @@ check_ollama() {
     print_success "Ollama service is running"
 }
 
-# Function to check if directory exists and handle it
+# Function to check if directory exists and handle it (NON-INTERACTIVE)
 check_install_directory() {
     print_step "Checking installation directory..."
 
     if [ -d "$INSTALL_DIR" ]; then
         print_warning "Directory $INSTALL_DIR already exists"
-        echo ""
-        echo "Options:"
-        echo "1) Remove existing directory and reinstall (RECOMMENDED)"
-        echo "2) Update existing installation"
-        echo "3) Cancel installation"
-        echo ""
-        read -p "Choose option (1-3): " choice
-
+        
+        # Use environment variable or default behavior
+        local choice="$HANDLE_EXISTING"
+        
         case $choice in
             1)
-                print_info "Removing existing directory..."
+                print_info "Removing existing directory for clean installation..."
                 rm -rf "$INSTALL_DIR"
                 ;;
             2)
                 print_info "Updating existing installation..."
                 cd "$INSTALL_DIR"
                 if [ -d ".git" ]; then
-                    git pull origin main
+                    if git pull origin main >/dev/null 2>&1; then
+                        print_success "Updated successfully"
+                        return 0
+                    else
+                        print_warning "Update failed, doing clean installation..."
+                        cd ..
+                        rm -rf "$INSTALL_DIR"
+                    fi
                 else
-                    print_error "Not a git repository. Cannot update."
-                    exit 1
+                    print_warning "Not a git repository, doing clean installation..."
+                    cd ..
+                    rm -rf "$INSTALL_DIR"
                 fi
-                return 0
                 ;;
             3)
-                print_info "Installation cancelled."
+                print_info "Installation cancelled by configuration."
                 exit 0
                 ;;
             *)
-                print_error "Invalid choice. Installation cancelled."
-                exit 1
+                print_info "Using default: removing existing directory..."
+                rm -rf "$INSTALL_DIR"
                 ;;
         esac
     fi
@@ -257,15 +282,14 @@ download_project() {
     print_step "Downloading chat-o-llama from GitHub..."
 
     if ! command_exists git; then
-        print_error "git not found!"
         print_info "Installing git..."
 
         if command_exists apt-get; then
-            sudo apt-get update && sudo apt-get install -y git
+            sudo apt-get update >/dev/null 2>&1 && sudo apt-get install -y git >/dev/null 2>&1
         elif command_exists yum; then
-            sudo yum install -y git
+            sudo yum install -y git >/dev/null 2>&1
         elif command_exists brew; then
-            brew install git
+            brew install git >/dev/null 2>&1
         else
             print_error "Cannot install git automatically. Please install git manually."
             exit 1
@@ -273,7 +297,7 @@ download_project() {
     fi
 
     # Clone the repository
-    if git clone "$REPO_URL" "$INSTALL_DIR"; then
+    if git clone "$REPO_URL" "$INSTALL_DIR" >/dev/null 2>&1; then
         print_success "chat-o-llama downloaded successfully"
     else
         print_error "Failed to download chat-o-llama"
@@ -292,12 +316,12 @@ create_virtual_env() {
     source /tmp/chat_ollama_env
 
     if [ -d "venv" ]; then
-        print_warning "Virtual environment already exists, removing..."
+        print_info "Removing existing virtual environment..."
         rm -rf venv
     fi
 
     # Create virtual environment
-    if "$PYTHON_CMD" -m venv venv; then
+    if "$PYTHON_CMD" -m venv venv >/dev/null 2>&1; then
         print_success "Virtual environment created"
     else
         print_error "Failed to create virtual environment"
@@ -309,12 +333,12 @@ create_virtual_env() {
 
     # Upgrade pip
     print_info "Upgrading pip..."
-    pip install --upgrade pip
+    pip install --upgrade pip >/dev/null 2>&1
 
     # Install requirements
     print_info "Installing Python dependencies..."
     if [ -f "requirements.txt" ]; then
-        if pip install -r requirements.txt; then
+        if pip install -r requirements.txt >/dev/null 2>&1; then
             print_success "Dependencies installed successfully"
         else
             print_error "Failed to install dependencies"
@@ -323,11 +347,11 @@ create_virtual_env() {
     else
         # Fallback installation
         print_warning "requirements.txt not found, installing basic dependencies..."
-        pip install Flask==3.0.0 requests==2.31.0
+        pip install Flask==3.0.0 requests==2.31.0 >/dev/null 2>&1
     fi
 }
 
-# Function to check and download Ollama models
+# Function to check and download Ollama models (NON-INTERACTIVE)
 check_ollama_models() {
     print_step "Checking available Ollama models..."
 
@@ -336,7 +360,6 @@ check_ollama_models() {
 
     if [ -z "$models" ]; then
         print_warning "No Ollama models found!"
-        echo ""
         print_info "Recommended models for chat-o-llama:"
         print_info "• $RECOMMENDED_MODEL (smallest, ~380MB, good performance)"
         print_info "• $FALLBACK_MODEL (~637MB, ultra lightweight)"
@@ -344,22 +367,22 @@ check_ollama_models() {
         print_info "• phi3:mini (~2.3GB, excellent balance)"
         echo ""
 
-        read -p "Download recommended model ($RECOMMENDED_MODEL)? [Y/n]: " download_choice
-        download_choice=${download_choice:-Y}
+        # Use environment variable for auto-download decision
+        local download_choice="$AUTO_DOWNLOAD_MODEL"
 
         case "$download_choice" in
-            [Yy]*|"")  # Y, y, Yes, yes, or empty (default)
+            [Yy]*|""|"true"|"1")  # Y, y, Yes, yes, true, 1, or empty (default)
                 print_info "Downloading $RECOMMENDED_MODEL (this may take a few minutes)..."
 
-                if ollama pull "$RECOMMENDED_MODEL"; then
+                if ollama pull "$RECOMMENDED_MODEL" >/dev/null 2>&1; then
                     print_success "Model $RECOMMENDED_MODEL downloaded successfully!"
                 else
                     print_warning "Failed to download $RECOMMENDED_MODEL, trying fallback..."
 
-                    if ollama pull "$FALLBACK_MODEL"; then
+                    if ollama pull "$FALLBACK_MODEL" >/dev/null 2>&1; then
                         print_success "Fallback model $FALLBACK_MODEL downloaded successfully!"
                     else
-                        print_error "Failed to download any model."
+                        print_warning "Failed to download any model."
                         print_info "You can download models later with:"
                         print_info "  ollama pull $RECOMMENDED_MODEL"
                         print_info "  ollama pull $FALLBACK_MODEL"
@@ -418,8 +441,13 @@ test_installation() {
     return 0
 }
 
-# Function to start the application
+# Function to start the application (OPTIONAL AUTO-START)
 start_application() {
+    if [ "$AUTO_START" != "true" ]; then
+        print_info "Auto-start disabled. Use './chat-manager.sh start' to start the service."
+        return 0
+    fi
+
     print_step "Starting chat-o-llama..."
 
     # Activate virtual environment
@@ -438,9 +466,10 @@ start_application() {
     # Start the application
     if [ -f "chat-manager.sh" ]; then
         print_info "Starting with chat-manager.sh..."
-        ./chat-manager.sh start "$port"
+        ./chat-manager.sh start "$port" >/dev/null 2>&1 &
     else
         print_info "Starting manually..."
+        mkdir -p logs
         nohup python app.py > logs/chat-o-llama.log 2>&1 &
         echo $! > process.pid
         sleep 3
@@ -452,12 +481,11 @@ start_application() {
 
     while [ $attempt -le $max_attempts ]; do
         if curl -s "http://localhost:$port" >/dev/null 2>&1; then
-            print_success "chat-o-llama started successfully!"
+            print_success "chat-o-llama started successfully at http://localhost:$port"
             break
         fi
 
-        print_info "Attempt $attempt/$max_attempts - waiting 3 seconds..."
-        sleep 3
+        sleep 2
         attempt=$((attempt + 1))
     done
 
@@ -470,10 +498,20 @@ start_application() {
 show_final_instructions() {
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
-    echo -e "${CYAN}       🚀 Quick Start Guide 🚀${NC}"
+    echo -e "${CYAN}       🚀 Installation Complete! 🚀${NC}"
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
     echo ""
     echo -e "${YELLOW}Installation Directory:${NC} $INSTALL_DIR"
+    if [ "$AUTO_START" = "true" ]; then
+        echo -e "${YELLOW}Service URL:${NC} http://localhost:$DEFAULT_PORT"
+    fi
+    echo ""
+    echo -e "${YELLOW}Customization (set before running installer):${NC}"
+    echo -e "  export CHAT_OLLAMA_INSTALL_DIR=/custom/path"
+    echo -e "  export CHAT_OLLAMA_MODEL=llama3.2:1b"
+    echo -e "  export CHAT_OLLAMA_AUTO_START=false"
+    echo -e "  export CHAT_OLLAMA_DOWNLOAD_MODEL=false"
+    echo -e "  export CHAT_OLLAMA_HANDLE_EXISTING=2  # 1=remove, 2=update"
     echo ""
     echo -e "${YELLOW}To manage the service:${NC}"
     echo -e "  cd $INSTALL_DIR"
@@ -504,16 +542,11 @@ cleanup_on_error() {
         # Remove temp files
         rm -f /tmp/chat_ollama_env
 
-        # Optionally remove partial installation
+        # Auto-cleanup partial installation (non-interactive)
         if [ -d "$INSTALL_DIR" ] && [ ! -f "$INSTALL_DIR/.git/config" ]; then
-        printf "Remove partial installation directory? [y/N]: "
-        read cleanup_choice
-        case "$cleanup_choice" in
-            [Yy]*)
-                rm -rf "$INSTALL_DIR"
-                print_info "Partial installation removed"
-                ;;
-        esac
+            print_info "Removing partial installation directory..."
+            rm -rf "$INSTALL_DIR"
+            print_info "Partial installation removed"
         fi
     fi
     exit $exit_code
@@ -524,30 +557,22 @@ handle_error() {
     cleanup_on_error
 }
 
-# Main installation function
+# Main installation function (NON-INTERACTIVE)
 main() {
     # Clear screen and show header
     clear
     print_header
 
-    print_info "This script will install chat-o-llama with all dependencies"
+    print_info "Non-interactive installation starting..."
     print_info "Installation directory: $INSTALL_DIR"
+    print_info "Auto-start: $AUTO_START"
+    print_info "Download model: $AUTO_DOWNLOAD_MODEL"
+    echo ""
+    print_info "Customize with environment variables (see final instructions)"
     echo ""
 
-    # Confirm installation
-    printf "Continue with installation? [Y/n]: "
-    read confirm
-    confirm=${confirm:-Y}
-
-    case "$confirm" in
-        [Yy]*|"")  # Y, y, Yes, yes, or empty (default)
-            ;;
-        *)
-            print_info "Installation cancelled."
-            exit 0
-            ;;
-    esac
-
+    # NO USER CONFIRMATION - just start installation
+    print_info "Starting installation automatically..."
     echo ""
 
     # Run installation steps with error handling
