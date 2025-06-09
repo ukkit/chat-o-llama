@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # chat-o-llama Auto Installer
 # Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | sh
