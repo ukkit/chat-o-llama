@@ -31,24 +31,17 @@ function initializeMarked() {
     // Custom renderer for code blocks with copy buttons
     const renderer = new marked.Renderer();
     renderer.code = function(code, infostring, escaped) {
-        const lang = (infostring || '').match(/\S*/)[0];
-        const highlightedCode = this.options.highlight ? 
-            this.options.highlight(code, lang) : 
-            escapeHtml(code);
-        
-        const langDisplay = lang ? lang : 'text';
-        const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
-        
-        return `
-            <pre>
-                <div class="code-block-header">
-                    <span class="code-language">${langDisplay}</span>
-                    <button class="code-copy-btn" onclick="copyCodeBlock('${codeId}')" title="Copy code">📋 Copy</button>
-                </div>
-                <code id="${codeId}" class="hljs ${lang || ''}">${highlightedCode}</code>
-            </pre>
-        `;
-    };
+		const lang = (infostring || '').match(/\S*/)[0];
+		const highlightedCode = this.options.highlight ?
+			this.options.highlight(code, lang) :
+			escapeHtml(code);
+
+		const langDisplay = lang ? lang : 'text';
+		const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
+
+		// Remove all unnecessary whitespace and newlines from the template
+		return `<pre><div class="code-block-header"><span class="code-language">${langDisplay}</span><button class="code-copy-btn" onclick="copyCodeBlock('${codeId}')" title="Copy code">📋 Copy</button></div><code id="${codeId}" class="hljs ${lang || ''}">${highlightedCode}</code></pre>`;
+	};
 
     marked.use({ renderer });
 }
@@ -245,7 +238,7 @@ async function loadConversation(conversationId) {
         chatContainer.innerHTML = '';
 
         data.messages.forEach(message => {
-            addMessageToChat(message.role, message.content, message.model, message.timestamp, 
+            addMessageToChat(message.role, message.content, message.model, message.timestamp,
                 message.response_time_ms, message.estimated_tokens);
         });
 
@@ -352,7 +345,7 @@ async function copyCodeBlock(codeId) {
 
         // Get the raw text content without HTML formatting
         let codeText = codeElement.textContent || codeElement.innerText || '';
-        
+
         // Clean up any extra whitespace that might have been added during highlighting
         codeText = codeText.trim();
 
@@ -419,10 +412,10 @@ async function copyMessage(button) {
 
         // Create a temporary div to extract text without markdown formatting
         const tempDiv = document.createElement('div');
-        
+
         // Clone the message content but exclude meta, stats, and copy button
         const clonedContent = messageContent.cloneNode(true);
-        
+
         // Remove meta, stats, and copy button
         const metaDiv = clonedContent.querySelector('.message-meta');
         const statsDiv = clonedContent.querySelector('.message-stats');
@@ -674,12 +667,12 @@ function addMessageToChat(role, content, model = null, timestamp = null, respons
     `;
 
     chatContainer.appendChild(messageDiv);
-    
+
     // Apply syntax highlighting to any new code blocks
     messageDiv.querySelectorAll('pre code').forEach((block) => {
         hljs.highlightElement(block);
     });
-    
+
     scrollToBottom();
 }
 
