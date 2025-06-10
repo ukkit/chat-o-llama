@@ -46,6 +46,29 @@ function initializeMarked() {
     marked.use({ renderer });
 }
 
+// Process thinking tags in content
+function processThinkingTags(content) {
+    // Handle both single-line and multi-line thinking tags
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+
+    return content.replace(thinkRegex, function(match, thinkingContent) {
+        // Clean up the thinking content - remove extra whitespace but preserve line breaks
+        const cleanedContent = thinkingContent.trim();
+
+        // Convert the thinking content to HTML with proper styling
+        // Process any markdown within the thinking content
+        let processedThinking;
+        try {
+            processedThinking = marked.parseInline(cleanedContent);
+        } catch (error) {
+            // Fallback to escaped HTML if markdown processing fails
+            processedThinking = escapeHtml(cleanedContent).replace(/\n/g, '<br>');
+        }
+
+        return `<div class="thinking-content" data-thinking="true">${processedThinking}</div>`;
+    });
+}
+
 // Initialize the app
 async function init() {
     console.log('Initializing chat-o-llama...');
@@ -404,7 +427,7 @@ function showCodeCopyError(codeId) {
     }
 }
 
-// Copy message content to clipboard
+// Copy message content to clipboard (excluding thinking content)
 async function copyMessage(button) {
     try {
         // Get the message content from the parent message div
@@ -413,20 +436,23 @@ async function copyMessage(button) {
         // Create a temporary div to extract text without markdown formatting
         const tempDiv = document.createElement('div');
 
-        // Clone the message content but exclude meta, stats, and copy button
+        // Clone the message content but exclude meta, stats, copy button, and thinking content
         const clonedContent = messageContent.cloneNode(true);
 
-        // Remove meta, stats, and copy button
+        // Remove meta, stats, copy button, and thinking content
         const metaDiv = clonedContent.querySelector('.message-meta');
         const statsDiv = clonedContent.querySelector('.message-stats');
         const copyBtn = clonedContent.querySelector('.copy-btn');
         const codeHeaders = clonedContent.querySelectorAll('.code-block-header');
+        const thinkingContent = clonedContent.querySelectorAll('.thinking-content');
 
         if (metaDiv) metaDiv.remove();
         if (statsDiv) statsDiv.remove();
         if (copyBtn) copyBtn.remove();
         // Remove code block headers to get clean code
         codeHeaders.forEach(header => header.remove());
+        // Remove thinking content from copy
+        thinkingContent.forEach(thinking => thinking.remove());
 
         tempDiv.appendChild(clonedContent);
 
@@ -616,7 +642,7 @@ async function sendMessage() {
     }
 }
 
-// Add message to chat with markdown support
+// Add message to chat with markdown support and thinking tag processing
 function addMessageToChat(role, content, model = null, timestamp = null, responseTime = null, tokens = null) {
     const chatContainer = document.getElementById('chatContainer');
     const messageDiv = document.createElement('div');
@@ -648,10 +674,14 @@ function addMessageToChat(role, content, model = null, timestamp = null, respons
     let contentHtml;
     if (role === 'assistant') {
         try {
-            contentHtml = marked.parse(content);
+            // First process thinking tags, then apply markdown
+            const processedContent = processThinkingTags(content);
+            contentHtml = marked.parse(processedContent);
         } catch (error) {
             console.error('Markdown parsing error:', error);
-            contentHtml = escapeHtml(content).replace(/\n/g, '<br>');
+            // Fallback: process thinking tags then escape HTML
+            const processedContent = processThinkingTags(content);
+            contentHtml = escapeHtml(processedContent).replace(/\n/g, '<br>');
         }
     } else {
         contentHtml = escapeHtml(content).replace(/\n/g, '<br>');
