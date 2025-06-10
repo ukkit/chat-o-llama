@@ -44,6 +44,30 @@ pip install -r requirements.txt
 
 </details>
 
+## 📸 Screenshots
+
+<details> <summary><b> 📷 App Screenshots</b></summary>
+
+![chat-o-llama - First Screen](./docs/assets/screenshot1.png)
+First screen after installation
+
+![chat-o-llama - New Chat Screen](./docs/assets/screenshot2.png)
+New chat screen with default model
+
+![chat-o-llama - Chat Bubble](./docs/assets/screenshot3.png)
+Chat bubble, reply from the model
+
+![chat-o-llama - Markdown Support](./docs/assets/screenshot4.png)
+Support for Markdown in chat
+
+![chat-o-llama - Select Model](./docs/assets/screenshot5.png)
+Support to select from list of models
+
+![chat-o-llama - Thinking](./docs/assets/screenshot6.png)
+Thinking styling
+
+</details>
+
 ## 🛠️ Need Help?
 
 Quick Fixes:
