@@ -1,46 +1,59 @@
 {
-  "timeouts": {
-    "ollama_timeout": 600,
-    "ollama_connect_timeout": 45
+  "app": {
+    "host": "0.0.0.0",
+    "port": 5000,
+    "debug": false,
+    "secret_key": "your-secret-key-here"
   },
-  "model_options": {
-    "temperature": 0.1,
-    "top_p": 0.95,
-    "top_k": 50,
-    "min_p": 0.01,
-    "typical_p": 0.95,
-    "num_predict": 4096,
-    "num_ctx": 8192,
-    "repeat_penalty": 1.15,
-    "repeat_last_n": 64,
-    "presence_penalty": 0.0,
-    "frequency_penalty": 0.0,
-    "penalize_newline": false,
-    "stop": ["\n\nHuman:", "\n\nUser:"],
-    "seed": null
+  "database": {
+    "path": "chat_database.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 24
+  },
+  "backends": {
+    "default": "ollama",
+    "enabled": ["ollama", "llama_cpp"],
+    "ollama": {
+      "enabled": true,
+      "url": "http://localhost:11434",
+      "timeout": 30,
+      "max_retries": 3,
+      "health_check_interval": 60,
+      "api_key": null
+    },
+    "llama_cpp": {
+      "enabled": true,
+      "url": "http://localhost:8120",
+      "timeout": 45,
+      "max_retries": 3,
+      "health_check_interval": 60,
+      "api_key": null,
+      "openai_compatible": true,
+      "chat_endpoint": "/v1/chat/completions",
+      "models_endpoint": "/v1/models"
+    }
   },
   "performance": {
-    "context_history_limit": 15,
-    "num_thread": -1,
-    "num_gpu": 0,
-    "main_gpu": 0,
-    "num_batch": 1,
-    "num_keep": 10,
-    "use_mlock": true,
-    "use_mmap": true,
-    "numa": false
+    "model_cache_ttl": 300,
+    "response_cache_enabled": false,
+    "response_cache_ttl": 60,
+    "max_concurrent_requests": 10
   },
-  "system_prompt": "You are Dost, a knowledgeable and thoughtful AI assistant. Take time to provide detailed, accurate, and well-reasoned responses. Consider multiple perspectives and provide comprehensive information when helpful.",
-  "response_optimization": {
-    "stream": false,
-    "keep_alive": "10m",
-    "low_vram": false,
-    "f16_kv": false,
-    "logits_all": false,
-    "vocab_only": false,
-    "use_mmap": true,
-    "use_mlock": false,
-    "embedding_only": false,
-    "numa": false
+  "ui": {
+    "theme": "auto",
+    "show_backend_indicators": true,
+    "default_model_filter": "all",
+    "enable_model_switching": true
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "app.log",
+    "max_size_mb": 10,
+    "backup_count": 5
+  },
+  "security": {
+    "rate_limit_per_minute": 60,
+    "enable_cors": false,
+    "allowed_origins": []
   }
 }
