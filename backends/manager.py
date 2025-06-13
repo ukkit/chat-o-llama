@@ -551,6 +551,15 @@ class BackendManagerSync:
         self.manager = BackendManager(config)
         self._loop = None
         self._initialized = False
+        
+        # Initialize backends dictionary for compatibility
+        self.backends = {}
+        
+        # Try to initialize synchronously
+        try:
+            self._ensure_initialized()
+        except Exception as e:
+            logger.error(f"Error during initial setup: {e}")
     
     def _get_loop(self):
         """Get or create event loop."""
@@ -565,18 +574,31 @@ class BackendManagerSync:
     def _run_async(self, coro):
         """Run async coroutine in sync context."""
         loop = self._get_loop()
-        if loop.is_running():
-            # If we're already in an event loop, create a new task
-            task = asyncio.create_task(coro)
-            return loop.run_until_complete(task)
-        else:
-            return loop.run_until_complete(coro)
+        try:
+            if loop.is_running():
+                # If we're already in an event loop, we need to handle this differently
+                # This is a simplified approach - in production you'd want more sophisticated handling
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, coro)
+                    return future.result()
+            else:
+                return loop.run_until_complete(coro)
+        except Exception as e:
+            logger.error(f"Error running async operation: {e}")
+            raise
     
     def _ensure_initialized(self):
         """Ensure the manager is initialized."""
         if not self._initialized:
-            self._run_async(self.manager.initialize())
-            self._initialized = True
+            try:
+                self._run_async(self.manager.initialize())
+                self._initialized = True
+                # Update backends dictionary for compatibility
+                self.backends = self.manager.backends.copy()
+            except Exception as e:
+                logger.error(f"Failed to initialize BackendManager: {e}")
+                # Don't raise the exception, allow the class to work in degraded mode
     
     def get_models(self) -> List[str]:
         """Get list of all model names (synchronous)."""
@@ -592,13 +614,14 @@ class BackendManagerSync:
         self,
         model: str,
         prompt: str,
-        conversation_history: Optional[List[Dict[str, str]]] = None
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         """Generate response (synchronous)."""
         try:
             self._ensure_initialized()
             response = self._run_async(
-                self.manager.generate_response(model, prompt, conversation_history)
+                self.manager.generate_response(model, prompt, conversation_history, **kwargs)
             )
             
             # Convert to format expected by original API
@@ -629,6 +652,101 @@ class BackendManagerSync:
         except Exception as e:
             logger.error(f"Error getting backend status: {e}")
             return {}
+    
+    # NEW METHODS ADDED FOR COMPATIBILITY
+    def get_health_status(self) -> Dict[str, Dict[str, Any]]:
+        """Get health status of all backends (synchronous)."""
+        try:
+            self._ensure_initialized()
+            health_status = {}
+            
+            for backend_id, health in self.manager.backend_health.items():
+                if health:
+                    health_status[backend_id] = {
+                        'available': health.is_healthy,
+                        'status': health.status.value if hasattr(health, 'status') else 'unknown',
+                        'response_time': health.response_time_ms,
+                        'error_message': health.error_message,
+                        'last_checked': health.last_checked
+                    }
+                else:
+                    health_status[backend_id] = {
+                        'available': False,
+                        'status': 'unknown',
+                        'response_time': None,
+                        'error_message': 'No health data available'
+                    }
+            
+            return health_status
+        except Exception as e:
+            logger.error(f"Error getting health status: {e}")
+            return {}
+    
+    def get_available_backends(self) -> List[str]:
+        """Get list of available backend names (synchronous)."""
+        try:
+            self._ensure_initialized()
+            available = []
+            
+            for backend_id, health in self.manager.backend_health.items():
+                if health and health.is_healthy:
+                    available.append(backend_id)
+            
+            # Fallback: if no health data, check if backends exist
+            if not available:
+                available = list(self.manager.backends.keys())
+            
+            return available
+        except Exception as e:
+            logger.error(f"Error getting available backends: {e}")
+            return []
+    
+    def check_health(self) -> bool:
+        """Check if at least one backend is available (synchronous)."""
+        try:
+            available_backends = self.get_available_backends()
+            return len(available_backends) > 0
+        except Exception as e:
+            logger.error(f"Error checking health: {e}")
+            return False
+    
+    def is_available(self) -> bool:
+        """Check if the backend manager is available (alias for check_health)."""
+        return self.check_health()
+    
+    def get_backend_status_simple(self, backend_name: str) -> Dict[str, Any]:
+        """Get status of a specific backend (synchronous)."""
+        try:
+            self._ensure_initialized()
+            
+            if backend_name not in self.manager.backends:
+                return {'available': False, 'error': 'Backend not found'}
+            
+            health = self.manager.backend_health.get(backend_name)
+            if health:
+                return {
+                    'available': health.is_healthy,
+                    'status': health.status.value if hasattr(health, 'status') else 'unknown',
+                    'response_time': health.response_time_ms,
+                    'error_message': health.error_message
+                }
+            else:
+                return {
+                    'available': False,
+                    'status': 'unknown',
+                    'error_message': 'No health data available'
+                }
+        except Exception as e:
+            logger.error(f"Error getting backend status for {backend_name}: {e}")
+            return {'available': False, 'error': str(e)}
+    
+    def refresh_health(self) -> None:
+        """Force refresh health status for all backends (synchronous)."""
+        try:
+            self._ensure_initialized()
+            self._run_async(self.manager.refresh_backend_health())
+        except Exception as e:
+            logger.error(f"Error refreshing health: {e}")
     
     def __del__(self):
         """Cleanup on deletion."""
