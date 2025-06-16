@@ -182,50 +182,25 @@ class ConfigManager:
         return errors
     
     def _validate_backends_config(self) -> List[str]:
-        """Validate backend configurations - Updated for flexible schema."""
+        """Validate backend configurations."""
         errors = []
         backends = self.config.get("backends", {})
         
-        # Check for default backend in multiple locations
-        default_backend = None
-        if "default_backend" in self.config:
-            default_backend = self.config["default_backend"]
-        elif "default" in backends:
-            default_backend = backends["default"]
-        
+        # Validate default backend
+        default_backend = backends.get("default")
         if not default_backend:
-            errors.append("Default backend must be specified (use 'default_backend' at root level or 'backends.default')")
+            errors.append("Default backend must be specified")
         
-        # Get enabled backends - check both formats
-        enabled_backends = []
-        
-        # Format 1: Check "enabled" array in backends section
-        if "enabled" in backends and isinstance(backends["enabled"], list):
-            for backend_name in backends["enabled"]:
-                backend_config = backends.get(backend_name, {})
-                if isinstance(backend_config, dict) and backend_config.get("enabled", False):
-                    enabled_backends.append(backend_name)
-        
-        # Format 2: Check individual backend enabled flags
-        for backend_name, backend_config in backends.items():
-            if (backend_name not in ["default", "enabled", "default_backend"] and 
-                isinstance(backend_config, dict) and 
-                backend_config.get("enabled", False)):
-                if backend_name not in enabled_backends:
-                    enabled_backends.append(backend_name)
-        
-        if not enabled_backends:
-            errors.append("At least one backend must be enabled (set 'enabled': true in backend config)")
+        # Validate enabled backends
+        enabled = backends.get("enabled", [])
+        if not isinstance(enabled, list) or not enabled:
+            errors.append("At least one backend must be enabled")
         
         # Validate individual backend configurations
-        for backend_name in enabled_backends:
+        for backend_name in enabled:
             backend_config = backends.get(backend_name, {})
             backend_errors = self._validate_backend_config(backend_name, backend_config)
             errors.extend(backend_errors)
-        
-        # Validate that default backend is among enabled backends
-        if default_backend and default_backend not in enabled_backends:
-            errors.append(f"Default backend '{default_backend}' must be enabled")
         
         return errors
     
@@ -259,22 +234,14 @@ class ConfigManager:
         return errors
     
     def _validate_database_config(self) -> List[str]:
-        """Validate database configuration - Updated for flexible schema."""
+        """Validate database configuration."""
         errors = []
+        db_config = self.config.get("database", {})
         
-        # Check for database path in multiple locations
-        db_path = None
-        if "database" in self.config:
-            db_config = self.config["database"]
-            if isinstance(db_config, dict):
-                db_path = db_config.get("path")
-            elif isinstance(db_config, str):
-                db_path = db_config
-        elif "database_path" in self.config:
-            db_path = self.config["database_path"]
-        
+        # Validate database path
+        db_path = db_config.get("path")
         if not db_path:
-            errors.append("Database path must be specified (use 'database.path' or 'database_path')")
+            errors.append("Database path must be specified")
         elif not isinstance(db_path, str):
             errors.append("Database path must be a string")
         
@@ -353,35 +320,19 @@ class ConfigManager:
             )
     
     def get_enabled_backends(self) -> List[str]:
-        """Get list of enabled backend names - Updated for flexible schema."""
+        """Get list of enabled backend names."""
         backends = self.config.get("backends", {})
         enabled = []
         
-        # Check both the "enabled" array and individual backend flags
-        enabled_list = backends.get("enabled", [])
-        
-        for backend_name in enabled_list:
+        for backend_name in backends.get("enabled", []):
             backend_config = backends.get(backend_name, {})
-            if isinstance(backend_config, dict) and backend_config.get("enabled", False):
-                enabled.append(backend_name)
-        
-        # Also check for backends with enabled=true that might not be in the enabled list
-        for backend_name, backend_config in backends.items():
-            if (backend_name not in ["default", "enabled", "default_backend"] and
-                isinstance(backend_config, dict) and
-                backend_config.get("enabled", False) and
-                backend_name not in enabled):
+            if backend_config.get("enabled", False):
                 enabled.append(backend_name)
         
         return enabled
     
     def get_default_backend(self) -> str:
-        """Get the default backend name - Updated for flexible schema."""
-        # Check root level first
-        if "default_backend" in self.config:
-            return self.config["default_backend"]
-        
-        # Check backends.default
+        """Get the default backend name."""
         return self.config.get("backends", {}).get("default", "ollama")
     
     def get(self, *path, default=None) -> Any:

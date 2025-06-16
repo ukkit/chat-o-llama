@@ -8,13 +8,12 @@
   "database": {
     "path": "chat_database.db",
     "backup_enabled": true,
-    "backup_interval_hours": 24,
-    "backup_on_startup": true
+    "backup_interval_hours": 24
   },
-  "default_backend": "ollama",
   "backends": {
+    "default": "ollama",
+    "enabled": ["ollama", "llama_cpp"],
     "ollama": {
-      "type": "ollama",
       "enabled": true,
       "url": "http://localhost:11434",
       "timeout": 30,
@@ -23,7 +22,6 @@
       "api_key": null
     },
     "llama_cpp": {
-      "type": "llama_cpp",
       "enabled": true,
       "url": "http://localhost:8120",
       "timeout": 45,
@@ -57,9 +55,5 @@
     "rate_limit_per_minute": 60,
     "enable_cors": false,
     "allowed_origins": []
-  },
-  "health_check": {
-    "interval": 60,
-    "timeout": 5
   }
 }
