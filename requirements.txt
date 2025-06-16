@@ -1,23 +1,2 @@
-# Chat-o-llama Requirements
-# Updated for Backend Abstraction Layer
-
-# Core web framework
 Flask==3.0.0
-
-# HTTP client library for backend communication
 requests==2.31.0
-
-# Async HTTP client for backend abstraction layer
-aiohttp==3.9.1
-
-# Testing framework and utilities
-pytest==7.4.3
-pytest-asyncio==0.21.1
-pytest-mock==3.12.0
-
-# Development and testing utilities (optional)
-# Uncomment for development environment
-black==23.11.0              # Code formatting
-flake8==6.1.0               # Code linting
-mypy==1.7.0                 # Type checking
-coverage==7.3.2             # Test coverage
