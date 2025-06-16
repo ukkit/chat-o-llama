@@ -1,5 +1,4 @@
 # chat-o-llama .gitignore
-local/
 
 # Virtual Environment
 venv/
