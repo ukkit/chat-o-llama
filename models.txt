@@ -1,0 +1,15 @@
+# Example GGUF Model URLs for Chat-O-Llama
+# Format: URL or URL|custom-filename.gguf
+# Lines starting with # are comments
+
+# Small models for testing (< 1GB)
+https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf|qwen2.5-0.5b.gguf
+https://huggingface.co/microsoft/DialoGPT-small/resolve/main/pytorch_model.bin.gguf|diagpt-small.gguf
+
+# Medium models (1-5GB)
+# https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf|qwen2.5-1.5b.gguf
+# https://huggingface.co/microsoft/DialoGPT-medium/resolve/main/pytorch_model.bin.gguf|diagpt-medium.gguf
+
+# Large models (5GB+) - uncomment if you have sufficient disk space and RAM
+# https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf|qwen2.5-3b.gguf
+# https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf|qwen2.5-7b.gguf

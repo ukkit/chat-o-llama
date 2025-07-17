@@ -300,6 +300,29 @@ settings.local.py
 .tox/
 htmlcov/
 
+# Test reports and results
+# ========================
+tests/reports/
+*test_report*.json
+*test_results*.json
+*benchmark_report*.json
+*performance_report*.json
+*compression_benchmark*.json
+*compliance_report*.json
+*interface_compliance*.json
+*backend_comparison*.json
+*.test.json
+test_output/
+test_logs/
+
+# Mock model files for testing
+# =============================
+test_models/
+llama_models/
+*.gguf
+*.bin
+model_cache/
+
 # Documentation builds
 # ===================
 docs/_build/

@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# chat-o-llama Auto Installer (Non-Interactive Version)
+# Chat-O-Llama Auto Installer (Non-Interactive Version)
 # Usage: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 # Or: wget -O- https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
+# 
+# Note: This installs Chat-O-Llama. For Ollama installation, use install-ollama.sh first.
 
 # For better compatibility, try to use bash if available
 if command -v bash >/dev/null 2>&1; then
@@ -28,13 +30,10 @@ NC='\033[0m' # No Color
 REPO_URL="https://github.com/ukkit/chat-o-llama.git"
 INSTALL_DIR="${CHAT_OLLAMA_INSTALL_DIR:-$HOME/chat-o-llama}"
 DEFAULT_PORT="${CHAT_OLLAMA_PORT:-3000}"
-RECOMMENDED_MODEL="${CHAT_OLLAMA_MODEL:-qwen2.5:0.5b}"
-FALLBACK_MODEL="tinyllama"
-MIN_PYTHON_VERSION="3.8"
+MIN_PYTHON_VERSION="3.10"
 
 # Non-interactive configuration (environment variables)
 AUTO_CONFIRM="${CHAT_OLLAMA_AUTO_CONFIRM:-Y}"
-AUTO_DOWNLOAD_MODEL="${CHAT_OLLAMA_DOWNLOAD_MODEL:-Y}"
 HANDLE_EXISTING="${CHAT_OLLAMA_HANDLE_EXISTING:-1}"  # 1=remove, 2=update, 3=cancel
 AUTO_START="${CHAT_OLLAMA_AUTO_START:-true}"
 FORCE_REINSTALL="${CHAT_OLLAMA_FORCE_REINSTALL:-true}"
@@ -42,8 +41,8 @@ FORCE_REINSTALL="${CHAT_OLLAMA_FORCE_REINSTALL:-true}"
 # Function to print colored output
 print_header() {
     echo -e "${PURPLE}╔══════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║           chat-o-llama 🦙            ║${NC}"
-    echo -e "${PURPLE}║     Non-Interactive Installer       ║${NC}"
+    echo -e "${PURPLE}║        Chat-O-Llama                  ║${NC}"
+    echo -e "${PURPLE}║     Application Installer           ║${NC}"
     echo -e "${PURPLE}╚══════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -112,8 +111,8 @@ check_python() {
     local python_cmd=""
     local python_version=""
 
-    # Try different Python commands
-    for cmd in python3 python python3.11 python3.10 python3.9 python3.8; do
+    # Try different Python commands (only 3.10+)
+    for cmd in python3 python python3.12 python3.11 python3.10; do
         if command_exists "$cmd"; then
             local version=$(get_python_version "$cmd")
             if version_ge "$version" "$MIN_PYTHON_VERSION"; then
@@ -137,9 +136,9 @@ check_python() {
         else
             print_error "Cannot install Python automatically."
             print_info "Please install Python $MIN_PYTHON_VERSION+ manually:"
-            print_info "• Ubuntu/Debian: sudo apt update && sudo apt install python3 python3-pip python3-venv"
-            print_info "• CentOS/RHEL: sudo yum install python3 python3-pip"
-            print_info "• macOS: brew install python3"
+            print_info "• Ubuntu/Debian: sudo apt update && sudo apt install python3.10 python3.10-pip python3.10-venv"
+            print_info "• CentOS/RHEL: sudo yum install python3.10 python3.10-pip"
+            print_info "• macOS: brew install python@3.10"
             exit 1
         fi
         
@@ -156,77 +155,59 @@ check_python() {
     print_success "Python $python_version found at $(command -v "$python_cmd")"
     echo "PYTHON_CMD=$python_cmd" > /tmp/chat_ollama_env
 
-    # Check if pip is available
-    if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
-        print_info "Installing pip..."
-        if command_exists apt-get; then
-            sudo apt-get update >/dev/null 2>&1 && sudo apt-get install -y python3-pip >/dev/null 2>&1
-        elif command_exists yum; then
-            sudo yum install -y python3-pip >/dev/null 2>&1
+    # Check if uv is available, install if not found
+    if ! command_exists uv; then
+        print_info "Installing uv..."
+        if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
+            # Add uv to PATH for current session
+            export PATH="$HOME/.cargo/bin:$PATH"
+            print_success "uv installed successfully"
         else
-            print_error "pip not found and cannot auto-install. Please install pip manually."
+            print_error "Failed to install uv. Please install manually."
+            print_info "Run: curl -LsSf https://astral.sh/uv/install.sh | sh"
             exit 1
         fi
+    else
+        print_success "uv found at $(command -v uv)"
     fi
 
-    # Check if venv module is available
-    if ! "$python_cmd" -m venv --help >/dev/null 2>&1; then
-        print_info "Installing venv module..."
-        if command_exists apt-get; then
-            sudo apt-get install -y python3-venv >/dev/null 2>&1
-        else
-            print_error "venv module not available. Please install python3-venv package."
+    # Ensure uv is available in PATH for the rest of the script
+    if ! command_exists uv; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+        if ! command_exists uv; then
+            print_error "uv installation failed. Please install manually."
             exit 1
         fi
     fi
 }
 
-# Function to check Ollama installation
-check_ollama() {
-    print_step "Checking Ollama installation..."
+# Function to check Ollama dependency
+check_ollama_dependency() {
+    print_step "Checking Ollama dependency..."
 
     if ! command_exists ollama; then
-        print_info "Installing Ollama..."
-        
-        # Install Ollama using their non-interactive installer
-        if curl -fsSL https://ollama.com/install.sh | sh >/dev/null 2>&1; then
-            print_success "Ollama installed successfully!"
-        else
-            print_error "Failed to install Ollama automatically."
-            print_info "Please install Ollama manually from: https://ollama.com"
-            exit 1
-        fi
+        print_error "Ollama not found!"
+        print_info "Chat-O-Llama requires Ollama to be installed first."
+        print_info ""
+        print_info "Please install Ollama first using one of these methods:"
+        print_info "• Run: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install-ollama.sh | bash"
+        print_info "• Or visit: https://ollama.com"
+        print_info ""
+        print_info "After installing Ollama, run this installer again."
+        exit 1
     else
         print_success "Ollama found at $(command -v ollama)"
     fi
 
     # Check if Ollama service is running
     if ! ollama list >/dev/null 2>&1; then
-        print_info "Starting Ollama service..."
-
-        # Try to start Ollama service in background
-        if command_exists systemctl; then
-            # Try systemd service
-            if systemctl is-enabled ollama >/dev/null 2>&1; then
-                sudo systemctl start ollama >/dev/null 2>&1
-                sleep 3
-            fi
-        fi
-
-        # If still not working, start manually in background
-        if ! ollama list >/dev/null 2>&1; then
-            print_info "Starting Ollama service in background..."
-            nohup ollama serve >/dev/null 2>&1 &
-            sleep 5
-
-            # Check again
-            if ! ollama list >/dev/null 2>&1; then
-                print_error "Could not start Ollama service."
-                print_info "Please start Ollama manually with: ollama serve"
-                print_info "Then run this installer again."
-                exit 1
-            fi
-        fi
+        print_error "Ollama service is not running!"
+        print_info "Please start Ollama service first:"
+        print_info "• Try: ollama serve"
+        print_info "• Or run: curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install-ollama.sh | bash"
+        print_info ""
+        print_info "After starting Ollama, run this installer again."
+        exit 1
     fi
 
     print_success "Ollama service is running"
@@ -320,90 +301,47 @@ create_virtual_env() {
         rm -rf venv
     fi
 
-    # Create virtual environment
-    if "$PYTHON_CMD" -m venv venv >/dev/null 2>&1; then
-        print_success "Virtual environment created"
+    # Ensure uv is available in PATH
+    if ! command_exists uv; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+
+    print_info "Using uv for environment and dependency management..."
+    
+    # Create virtual environment with uv
+    if uv venv venv >/dev/null 2>&1; then
+        print_success "Virtual environment created with uv"
     else
-        print_error "Failed to create virtual environment"
+        print_error "Failed to create virtual environment with uv"
         exit 1
     fi
 
     # Activate virtual environment
     source venv/bin/activate
 
-    # Upgrade pip
-    print_info "Upgrading pip..."
-    pip install --upgrade pip >/dev/null 2>&1
-
-    # Install requirements
-    print_info "Installing Python dependencies..."
-    if [ -f "requirements.txt" ]; then
-        if pip install -r requirements.txt >/dev/null 2>&1; then
-            print_success "Dependencies installed successfully"
+    # Install dependencies with uv
+    print_info "Installing Python dependencies with uv..."
+    if [ -f "pyproject.toml" ]; then
+        if uv sync >/dev/null 2>&1; then
+            print_success "Dependencies installed successfully with uv"
         else
-            print_error "Failed to install dependencies"
+            print_error "Failed to install dependencies with uv"
+            exit 1
+        fi
+    elif [ -f "requirements.txt" ]; then
+        if uv pip install -r requirements.txt >/dev/null 2>&1; then
+            print_success "Dependencies installed successfully with uv"
+        else
+            print_error "Failed to install dependencies with uv"
             exit 1
         fi
     else
-        # Fallback installation
-        print_warning "requirements.txt not found, installing basic dependencies..."
-        pip install Flask==3.0.0 requests==2.31.0 >/dev/null 2>&1
+        # Fallback installation with uv
+        print_warning "No pyproject.toml or requirements.txt found, installing basic dependencies..."
+        uv pip install Flask==3.0.0 requests==2.31.0 "mcp[cli]==1.1.0" >/dev/null 2>&1
     fi
 }
 
-# Function to check and download Ollama models (NON-INTERACTIVE)
-check_ollama_models() {
-    print_step "Checking available Ollama models..."
-
-    # Get list of installed models
-    local models=$(ollama list 2>/dev/null | grep -v "NAME" | awk '{print $1}' | grep -v "^$" || echo "")
-
-    if [ -z "$models" ]; then
-        print_warning "No Ollama models found!"
-        print_info "Recommended models for chat-o-llama:"
-        print_info "• $RECOMMENDED_MODEL (smallest, ~380MB, good performance)"
-        print_info "• $FALLBACK_MODEL (~637MB, ultra lightweight)"
-        print_info "• llama3.2:1b (~1.3GB, better quality)"
-        print_info "• phi3:mini (~2.3GB, excellent balance)"
-        echo ""
-
-        # Use environment variable for auto-download decision
-        local download_choice="$AUTO_DOWNLOAD_MODEL"
-
-        case "$download_choice" in
-            [Yy]*|""|"true"|"1")  # Y, y, Yes, yes, true, 1, or empty (default)
-                print_info "Downloading $RECOMMENDED_MODEL (this may take a few minutes)..."
-
-                if ollama pull "$RECOMMENDED_MODEL" >/dev/null 2>&1; then
-                    print_success "Model $RECOMMENDED_MODEL downloaded successfully!"
-                else
-                    print_warning "Failed to download $RECOMMENDED_MODEL, trying fallback..."
-
-                    if ollama pull "$FALLBACK_MODEL" >/dev/null 2>&1; then
-                        print_success "Fallback model $FALLBACK_MODEL downloaded successfully!"
-                    else
-                        print_warning "Failed to download any model."
-                        print_info "You can download models later with:"
-                        print_info "  ollama pull $RECOMMENDED_MODEL"
-                        print_info "  ollama pull $FALLBACK_MODEL"
-                    fi
-                fi
-                ;;
-            *)
-                print_info "Skipping model download. You can download models later with:"
-                print_info "  ollama pull $RECOMMENDED_MODEL"
-                print_info "  ollama pull $FALLBACK_MODEL"
-                ;;
-        esac
-    else
-        print_success "Found existing models:"
-        echo "$models" | while read -r model; do
-            if [ -n "$model" ]; then
-                print_info "  • $model"
-            fi
-        done
-    fi
-}
 
 # Function to make scripts executable
 setup_permissions() {
@@ -430,14 +368,8 @@ test_installation() {
         return 1
     fi
 
-    # Check if Ollama is responsive
-    if ollama list >/dev/null 2>&1; then
-        print_success "Ollama connectivity verified"
-    else
-        print_warning "Ollama connectivity issue"
-        return 1
-    fi
-
+    # Ollama connectivity is already verified in check_ollama_dependency()
+    print_success "Installation verification complete"
     return 0
 }
 
@@ -498,7 +430,7 @@ start_application() {
 show_final_instructions() {
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
-    echo -e "${CYAN}       🚀 Installation Complete! 🚀${NC}"
+    echo -e "${CYAN}    🚀 Chat-O-Llama Installation Complete! 🚀${NC}"
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
     echo ""
     echo -e "${YELLOW}Installation Directory:${NC} $INSTALL_DIR"
@@ -508,9 +440,7 @@ show_final_instructions() {
     echo ""
     echo -e "${YELLOW}Customization (set before running installer):${NC}"
     echo -e "  export CHAT_OLLAMA_INSTALL_DIR=/custom/path"
-    echo -e "  export CHAT_OLLAMA_MODEL=llama3.2:1b"
     echo -e "  export CHAT_OLLAMA_AUTO_START=false"
-    echo -e "  export CHAT_OLLAMA_DOWNLOAD_MODEL=false"
     echo -e "  export CHAT_OLLAMA_HANDLE_EXISTING=2  # 1=remove, 2=update"
     echo ""
     echo -e "${YELLOW}To manage the service:${NC}"
@@ -522,10 +452,15 @@ show_final_instructions() {
     echo -e "  cd $INSTALL_DIR"
     echo -e "  git pull origin main"
     echo -e "  source venv/bin/activate"
-    echo -e "  pip install -r requirements.txt"
+    echo -e "  uv sync"
     echo -e "  ./chat-manager.sh restart"
     echo ""
-    echo -e "${YELLOW}To add more Ollama models:${NC}"
+    echo -e "${YELLOW}Backend Management:${NC}"
+    echo -e "  • Ollama: ./install-ollama.sh           # Install/manage Ollama"
+    echo -e "  • Models: ollama pull <model>           # Add models"
+    echo -e "  • Future: ./install-llamacpp.sh        # llama.cpp support"
+    echo ""
+    echo -e "${YELLOW}Available Models:${NC}"
     echo -e "  ollama pull llama3.2:1b     # 1.3GB, good quality"
     echo -e "  ollama pull phi3:mini       # 2.3GB, excellent"
     echo -e "  ollama pull gemma2:2b       # 1.6GB, Google's model"
@@ -563,10 +498,10 @@ main() {
     clear
     print_header
 
-    print_info "Non-interactive installation starting..."
+    print_info "Chat-O-Llama installation starting..."
     print_info "Installation directory: $INSTALL_DIR"
     print_info "Auto-start: $AUTO_START"
-    print_info "Download model: $AUTO_DOWNLOAD_MODEL"
+    print_info "Requires: Ollama (checked during installation)"
     echo ""
     print_info "Customize with environment variables (see final instructions)"
     echo ""
@@ -577,7 +512,7 @@ main() {
 
     # Run installation steps with error handling
     check_python || handle_error
-    check_ollama || handle_error
+    check_ollama_dependency || handle_error
     check_install_directory || handle_error
 
     # Only download if not updating
@@ -587,7 +522,6 @@ main() {
 
     cd "$INSTALL_DIR" || handle_error
     create_virtual_env || handle_error
-    check_ollama_models || handle_error
     setup_permissions || handle_error
 
     # Test installation

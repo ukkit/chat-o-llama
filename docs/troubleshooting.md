@@ -10,6 +10,8 @@ Complete troubleshooting guide for chat-o-llama installation, configuration, and
 - [Performance Issues](#performance-issues)
 - [Configuration Issues](#configuration-issues)
 - [Ollama Issues](#ollama-issues)
+- [llama.cpp Issues](#llamacpp-issues) ⭐ *New*
+- [Multi-Backend Issues](#multi-backend-issues) ⭐ *New*
 - [Network Issues](#network-issues)
 - [Database Issues](#database-issues)
 - [Debug Mode](#debug-mode)
@@ -24,10 +26,13 @@ Complete troubleshooting guide for chat-o-llama installation, configuration, and
 
 | Issue | Quick Fix |
 |-------|-----------|
-| Port in use | `./chat-manager.sh start 8080` |
+| Port in use | `./chat-manager.sh start 3113` |
 | Process won't stop | `./chat-manager.sh force-stop` |
 | Ollama not responding | `curl http://localhost:11434/api/tags` |
 | No models available | `ollama pull qwen2.5:0.5b` |
+| llama.cpp compilation failed | `pip install llama-cpp-python --no-cache-dir` ⭐ *New* |
+| GGUF model not found | `ls models/*.gguf` ⭐ *New* |
+| Backend switching failed | `curl http://localhost:3113/api/backend/status` ⭐ *New* |
 | Permission denied | `chmod +x chat-manager.sh` |
 | Dependencies missing | `pip install -r requirements.txt` |
 | Virtual env not activated | `source venv/bin/activate` |
@@ -154,15 +159,15 @@ pip install Flask==3.0.0 requests==2.31.0  # Install individually
 #### Port Already in Use
 ```bash
 # Check what's using the port
-sudo lsof -i :3000
-netstat -tulpn | grep 3000
+sudo lsof -i :3113
+netstat -tulpn | grep 3113
 
 # Kill process using port
-sudo kill -9 $(lsof -ti :3000)
+sudo kill -9 $(lsof -ti :3113)
 
 # Use different port
-./chat-manager.sh start 8080
-PORT=8080 python app.py
+./chat-manager.sh start 3113
+PORT=3113 python app.py
 ```
 
 #### Process Management Issues
@@ -336,7 +341,7 @@ rm config.json
 #### Invalid Configuration Values
 ```bash
 # Check configuration via API
-curl http://localhost:3000/api/config
+curl http://localhost:3113/api/config
 
 # Common value ranges:
 # temperature: 0.0-2.0
@@ -358,7 +363,7 @@ unset DEBUG
 
 # Set proper values
 export OLLAMA_API_URL="http://localhost:11434"
-export PORT="3000"
+export PORT="3113"
 ```
 
 ---
@@ -439,6 +444,320 @@ export OLLAMA_NUM_PARALLEL=1
 
 # Check available memory
 free -h
+```
+
+---
+
+## llama.cpp Issues ⭐ *New*
+
+### Installation and Compilation Problems
+
+#### llama-cpp-python Compilation Fails
+```bash
+# Update build tools first
+pip install --upgrade pip setuptools wheel cmake
+
+# Clear pip cache and reinstall
+pip uninstall llama-cpp-python -y
+pip install llama-cpp-python --no-cache-dir --verbose
+
+# For systems with limited resources
+export CMAKE_ARGS="-DLLAMA_BLAS=OFF -DLLAMA_CUBLAS=OFF"
+pip install llama-cpp-python --no-cache-dir
+
+# For GPU support (NVIDIA)
+export CMAKE_ARGS="-DLLAMA_CUBLAS=ON"
+pip install llama-cpp-python --no-cache-dir
+
+# For Apple Silicon (M1/M2)
+export CMAKE_ARGS="-DLLAMA_METAL=ON"
+pip install llama-cpp-python --no-cache-dir
+
+# Use pre-built wheels if compilation fails
+pip install --index-url https://abetlen.github.io/llama-cpp-python/whl/cpu llama-cpp-python
+```
+
+#### Missing System Dependencies
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install build-essential cmake pkg-config
+
+# CentOS/RHEL
+sudo yum groupinstall "Development Tools"
+sudo yum install cmake
+
+# macOS
+xcode-select --install
+brew install cmake
+```
+
+### GGUF Model Issues
+
+#### Model Not Found
+```bash
+# Check models directory (using correct path from config.json)
+ls -la llama_models/
+find . -name "*.gguf" -type f
+
+# Create models directory if missing
+mkdir -p llama_models
+
+# Check model path in config
+grep -A 10 "llamacpp" config.json
+
+# Fix permissions
+chmod 644 llama_models/*.gguf
+chown $USER:$USER llama_models/*.gguf
+```
+
+#### Model Loading Errors
+```bash
+# Test model loading manually
+python3 -c "
+from llama_cpp import Llama
+try:
+    llm = Llama(model_path='llama_models/your-model.gguf', n_ctx=512)
+    print('Model loaded successfully')
+except Exception as e:
+    print(f'Model loading failed: {e}')
+"
+
+# Check model file integrity
+file llama_models/*.gguf  # Should show 'data'
+ls -lh llama_models/*.gguf  # Check file sizes
+
+# Verify GGUF format
+python3 -c "
+import struct
+with open('llama_models/your-model.gguf', 'rb') as f:
+    magic = f.read(4)
+    print(f'Magic bytes: {magic}')
+    print('Valid GGUF' if magic == b'GGUF' else 'Invalid format')
+"
+```
+
+#### Memory Issues with Local Models
+```bash
+# Current config.json settings are already optimized:
+# n_ctx: 4096, n_batch: 128, use_mmap: true, use_mlock: false
+
+# For very large models, reduce context further:
+{
+  "llamacpp": {
+    "n_ctx": 2048,
+    "n_batch": 64,
+    "use_mmap": true,
+    "use_mlock": false
+  }
+}
+
+# Monitor memory usage
+watch -n 1 'ps aux | grep python | grep -v grep; free -h'
+```
+
+### Performance Issues
+
+#### Slow Model Loading
+```bash
+# Current config already enables memory mapping
+# Model path: ./llama_models (as configured)
+# use_mmap: true, use_mlock: false
+
+# Check if models are in correct directory
+ls -la llama_models/
+```
+
+#### Slow Inference
+```bash
+# Current config optimizations:
+# n_threads: 8 (configured in config.json)
+# n_batch: 128
+# n_gpu_layers: 0 (CPU only by default)
+
+# For GPU acceleration (if available):
+{
+  "llamacpp": {
+    "n_gpu_layers": 32,  # Adjust based on GPU memory
+    "n_threads": 4       # Reduce CPU threads when using GPU
+  }
+}
+```
+
+---
+
+## Multi-Backend Issues ⭐ *New*
+
+### Backend Switching Problems
+
+#### Backend Not Responding
+```bash
+# Check backend status (using correct port 3113)
+curl http://localhost:3113/api/backend/status
+
+# Test individual backends
+curl http://localhost:3113/api/backend/info
+
+# Force health check
+curl -X POST http://localhost:3113/api/backend/health
+
+# Check backend configuration (correct structure)
+grep -A 20 "backend" config.json
+```
+
+#### Failed Backend Switch
+```bash
+# Check available backends
+curl http://localhost:3113/api/backend/status | jq '.backends'
+
+# Try switching manually
+curl -X POST http://localhost:3113/api/backend/switch \
+  -H "Content-Type: application/json" \
+  -d '{"backend_type": "llamacpp"}'
+
+# Check switch error details
+./chat-manager.sh logs | grep -i "backend\|switch"
+```
+
+#### Models Not Showing from Correct Backend
+```bash
+# Check which backend is active
+curl http://localhost:3113/api/models | jq '.active_backend'
+
+# List models from all backends
+curl http://localhost:3113/api/backend/models
+
+# Force model refresh
+./chat-manager.sh restart
+```
+
+### Configuration Conflicts
+
+#### Backend Configuration Errors
+```bash
+# Validate backend configuration (correct structure from config.json)
+python3 -c "
+import json
+with open('config.json') as f:
+    config = json.load(f)
+    
+backends = ['ollama', 'llamacpp']
+for backend in backends:
+    if backend in config:
+        print(f'{backend} config: OK')
+    else:
+        print(f'{backend} config: MISSING')
+        
+if 'backend' in config:
+    print(f'Active backend: {config[\"backend\"].get(\"active\", \"NOT SET\")}')
+"
+
+# Check correct configuration structure:
+{
+  "backend": {
+    "active": "ollama",
+    "auto_fallback": true,
+    "health_check_interval": 30
+  },
+  "ollama": {
+    "base_url": "http://localhost:11434"
+  },
+  "llamacpp": {
+    "model_path": "./llama_models"
+  }
+}
+```
+
+#### Conflicting Backend Settings
+```bash
+# Check for port conflicts (correct ports)
+netstat -tulpn | grep -E "(11434|3113)"
+
+# Ensure only one backend is active
+curl http://localhost:3113/api/backend/status | jq '.active_backend'
+
+# Verify Ollama connection
+curl http://localhost:11434/api/tags
+
+# Verify llama.cpp models
+ls -la llama_models/*.gguf
+```
+
+### Health Check Issues
+
+#### Backend Health Checks Failing
+```bash
+# Manual health check
+curl -X POST http://localhost:3113/api/backend/health
+
+# Check health check interval (current config: 30 seconds)
+grep -A 5 "health_check_interval" config.json
+
+# Disable health checks temporarily
+{
+  "backend": {
+    "health_check_interval": 0
+  }
+}
+
+# Check backend connectivity manually
+# For Ollama (correct URL):
+curl http://localhost:11434/api/tags
+
+# For llama.cpp (correct path):
+ls -la llama_models/*.gguf
+python3 -c "from llama_cpp import Llama; print('llama-cpp-python works')"
+```
+
+#### Automatic Fallback Not Working
+```bash
+# Check fallback configuration (current setting: true)
+curl http://localhost:3113/api/backend/status | jq '.auto_fallback'
+
+# Test fallback manually
+# 1. Stop primary backend (Ollama)
+sudo systemctl stop ollama
+
+# 2. Send a chat message
+curl -X POST http://localhost:3113/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"conversation_id": 1, "message": "test", "model": "any"}'
+
+# 3. Check if it switched to secondary backend
+curl http://localhost:3113/api/backend/info
+```
+
+### Model Compatibility Issues
+
+#### Models Not Loading Across Backends
+```bash
+# Check model format compatibility
+# Ollama models: Use Ollama format
+ollama list
+
+# llama.cpp models: Must be GGUF format in llama_models directory
+file llama_models/*.gguf
+
+# Model naming conflicts
+curl http://localhost:3113/api/backend/models | jq '.models_by_backend'
+```
+
+#### Cross-Backend Model Switching
+```bash
+# List models with backend prefixes
+curl http://localhost:3113/api/models
+
+# Switch model and backend in chat
+curl -X POST http://localhost:3113/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversation_id": 1, 
+    "message": "test",
+    "model": "llamacpp:your-model.gguf"
+  }'
+
+# Check if backend switched automatically
+curl http://localhost:3113/api/backend/info
 ```
 
 ---
@@ -609,7 +928,7 @@ ps aux | grep -E "(python|ollama)" | grep -v grep
 
 # Check ports
 echo "Port usage:"
-lsof -i :3000 2>/dev/null || echo "Port 3000 free"
+lsof -i :3113 2>/dev/null || echo "Port 3113 free"
 lsof -i :11434 2>/dev/null || echo "Port 11434 free"
 
 # Check disk space
@@ -628,7 +947,7 @@ echo "=== Health Check Complete ==="
 #!/bin/bash
 # api-test.sh
 
-BASE_URL="http://localhost:3000/api"
+BASE_URL="http://localhost:3113/api"
 
 echo "=== API Testing ==="
 
@@ -730,7 +1049,7 @@ while true; do
     
     # Port status
     echo -e "\nPort Status:"
-    lsof -i :3000 2>/dev/null && echo "Port 3000: IN USE" || echo "Port 3000: FREE"
+    lsof -i :3113 2>/dev/null && echo "Port 3113: IN USE" || echo "Port 3113: FREE"
     lsof -i :11434 2>/dev/null && echo "Port 11434: IN USE" || echo "Port 11434: FREE"
     
     # Recent logs

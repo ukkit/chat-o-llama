@@ -20,6 +20,26 @@
         <div class="sidebar-header">
             <div class="app-title">chat-o-llama 🦙</div>
             <button class="new-chat-btn" onclick="createNewChat()">+ New Chat</button>
+            
+            <!-- Consolidated backend selector with status -->
+            <div class="backend-section">
+                <div class="backend-dropdown-container">
+                    <div class="backend-current" id="backendCurrent" onclick="toggleBackendDropdown()">
+                        <span class="backend-indicator" id="backendIndicator">🔄</span>
+                        <span class="backend-text" id="backendText">Loading...</span>
+                        <span class="backend-chevron">▼</span>
+                    </div>
+                    <div class="backend-dropdown" id="backendDropdown">
+                        <div class="backend-options" id="backendOptions">
+                            <!-- Backend options will be populated here -->
+                        </div>
+                        <div class="backend-refresh-container">
+                            <button class="backend-refresh" id="backendRefresh" onclick="refreshBackendStatus()" title="Refresh backend status">↻ Refresh Status</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <select class="model-select" id="modelSelect">
                 <option value="">Loading models...</option>
             </select>

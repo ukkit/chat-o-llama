@@ -1,0 +1,52 @@
+[project]
+name = "chat-o-llama"
+version = "1.0.0"
+description = "A lightweight Flask-based web interface for Ollama AI models with persistent conversation management"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "chat-o-llama contributors" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10", 
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: Flask",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "Flask==3.0.0",
+    "requests==2.31.0",
+    "mcp[cli]==1.1.0",
+    "llama-cpp-python>=0.2.11",
+    "psutil>=5.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ukkit/chat-o-llama"
+Repository = "https://github.com/ukkit/chat-o-llama.git"
+Issues = "https://github.com/ukkit/chat-o-llama/issues"
+
+[project.scripts]
+chat-o-llama = "app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.10.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

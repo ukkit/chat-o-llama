@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# Chat-O-Llama Process Manager
-# Usage: ./manage_chat.sh [start|stop|status|restart] [port]
+# Chat-O-Llama Process Manager with Multi-Backend Support
+# Usage: ./chat-manager.sh [start|stop|status|restart|backend] [port|backend_name]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PID_FILE="$SCRIPT_DIR/process.pid"
+CONFIG_FILE="${CONFIG_FILE:-$SCRIPT_DIR/config.json}"
 
 # Create log directory if it doesn't exist
 LOG_DIR="$SCRIPT_DIR/logs"
@@ -40,6 +41,211 @@ print_info() {
     echo -e "${BLUE}[DEBUG]${NC} $1"
 }
 
+# Backend detection and management functions
+get_config_value() {
+    local key=$1
+    if [ -f "$CONFIG_FILE" ]; then
+        python3 -c "
+import json
+import sys
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = json.load(f)
+    
+    keys = '$key'.split('.')
+    value = config
+    for k in keys:
+        value = value.get(k, None)
+        if value is None:
+            break
+    
+    if value is not None:
+        print(value)
+    else:
+        sys.exit(1)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null
+    else
+        return 1
+    fi
+}
+
+get_active_backend() {
+    get_config_value "backend.active"
+}
+
+check_ollama_health() {
+    local base_url=$(get_config_value "ollama.base_url")
+    if [ -z "$base_url" ]; then
+        base_url="http://localhost:11434"
+    fi
+    
+    if command -v curl &> /dev/null; then
+        curl -s --connect-timeout 5 --max-time 10 "$base_url/api/tags" > /dev/null 2>&1
+        return $?
+    else
+        # Fallback using python
+        python3 -c "
+import urllib.request
+import urllib.error
+try:
+    urllib.request.urlopen('$base_url/api/tags', timeout=5)
+    exit(0)
+except:
+    exit(1)
+" 2>/dev/null
+        return $?
+    fi
+}
+
+check_llamacpp_requirements() {
+    # Check if llama-cpp-python is available
+    python3 -c "import llama_cpp" 2>/dev/null
+    local python_check=$?
+    
+    # Check if model directory exists and has GGUF files
+    local model_path=$(get_config_value "llamacpp.model_path")
+    if [ -z "$model_path" ]; then
+        model_path="./models"
+    fi
+    
+    local model_dir_check=1
+    if [ -d "$SCRIPT_DIR/$model_path" ]; then
+        if find "$SCRIPT_DIR/$model_path" -name "*.gguf" -type f | head -1 | grep -q .; then
+            model_dir_check=0
+        fi
+    fi
+    
+    return $((python_check + model_dir_check))
+}
+
+check_backend_health() {
+    local backend=${1:-$(get_active_backend)}
+    
+    case "$backend" in
+        "ollama")
+            check_ollama_health
+            return $?
+            ;;
+        "llamacpp")
+            check_llamacpp_requirements
+            return $?
+            ;;
+        *)
+            print_error "Unknown backend: $backend"
+            return 1
+            ;;
+    esac
+}
+
+get_backend_status() {
+    local backend=${1:-$(get_active_backend)}
+    
+    case "$backend" in
+        "ollama")
+            if check_ollama_health; then
+                echo "healthy"
+            else
+                echo "unhealthy"
+            fi
+            ;;
+        "llamacpp")
+            if check_llamacpp_requirements; then
+                echo "healthy"
+            else
+                echo "unhealthy"
+            fi
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+}
+
+list_available_backends() {
+    echo "Available backends:"
+    
+    # Check Ollama
+    local ollama_status=$(get_backend_status "ollama")
+    local ollama_icon=""
+    case "$ollama_status" in
+        "healthy") ollama_icon="${GREEN}✓${NC}" ;;
+        "unhealthy") ollama_icon="${RED}✗${NC}" ;;
+        *) ollama_icon="${YELLOW}?${NC}" ;;
+    esac
+    echo -e "  ollama   $ollama_icon $ollama_status"
+    
+    # Check LlamaCpp
+    local llamacpp_status=$(get_backend_status "llamacpp")
+    local llamacpp_icon=""
+    case "$llamacpp_status" in
+        "healthy") llamacpp_icon="${GREEN}✓${NC}" ;;
+        "unhealthy") llamacpp_icon="${RED}✗${NC}" ;;
+        *) llamacpp_icon="${YELLOW}?${NC}" ;;
+    esac
+    echo -e "  llamacpp $llamacpp_icon $llamacpp_status"
+    
+    echo ""
+    local active_backend=$(get_active_backend)
+    if [ -n "$active_backend" ]; then
+        echo -e "Active backend: ${BLUE}$active_backend${NC}"
+    else
+        print_warning "No active backend configured"
+    fi
+}
+
+switch_backend() {
+    local new_backend=$1
+    
+    if [ -z "$new_backend" ]; then
+        print_error "Backend name required"
+        echo "Available backends: ollama, llamacpp"
+        return 1
+    fi
+    
+    case "$new_backend" in
+        "ollama"|"llamacpp")
+            # Check if backend is available
+            local status=$(get_backend_status "$new_backend")
+            if [ "$status" != "healthy" ]; then
+                print_warning "Backend '$new_backend' is not healthy ($status)"
+                print_info "Continuing anyway - backend may become available during runtime"
+            fi
+            
+            # Update config file
+            python3 -c "
+import json
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = json.load(f)
+    
+    config['backend']['active'] = '$new_backend'
+    
+    with open('$CONFIG_FILE', 'w') as f:
+        json.dump(config, f, indent=2)
+    
+    print('Backend switched to: $new_backend')
+except Exception as e:
+    print(f'Error updating config: {e}')
+    exit(1)
+"
+            if [ $? -eq 0 ]; then
+                print_status "Backend switched to: $new_backend"
+                print_info "Restart the application for changes to take effect"
+            else
+                print_error "Failed to switch backend"
+                return 1
+            fi
+            ;;
+        *)
+            print_error "Unknown backend: $new_backend"
+            print_info "Available backends: ollama, llamacpp"
+            return 1
+            ;;
+    esac
+}
+
 # Function to check if port is in use
 check_port() {
     local port=$1
@@ -60,7 +266,29 @@ get_pid_by_port() {
 start_app() {
     local port=${1:-$DEFAULT_PORT}
 
-    print_info "Starting chat-o-llama on port $port..."
+    print_info "Starting Chat-O-Llama on port $port..."
+    
+    # Check backend configuration and health
+    local active_backend=$(get_active_backend)
+    if [ -n "$active_backend" ]; then
+        print_info "Active backend: $active_backend"
+        local backend_status=$(get_backend_status "$active_backend")
+        case "$backend_status" in
+            "healthy")
+                print_status "Backend '$active_backend' is healthy ✓"
+                ;;
+            "unhealthy")
+                print_warning "Backend '$active_backend' is not healthy - some features may not work"
+                print_info "Check backend status with: $0 backend status"
+                ;;
+            *)
+                print_warning "Backend '$active_backend' status unknown"
+                ;;
+        esac
+    else
+        print_warning "No active backend configured in config.json"
+        print_info "Use: $0 backend switch <backend_name> to set a backend"
+    fi
 
     # Check if already running
     if [ -f "$PID_FILE" ]; then
@@ -94,13 +322,44 @@ start_app() {
         return 1
     fi
 
-    # Check if virtual environment is activated
+    # Check if virtual environment is activated, try to activate if not
     if [ -z "$VIRTUAL_ENV" ]; then
-        print_error "Virtual environment not activated!"
-        print_info "Please activate your virtual environment first:"
-        print_info "  source venv/bin/activate"
-        print_info "  $0 start"
-        return 1
+        print_warning "Virtual environment not activated, attempting to activate..."
+        
+        # Look for virtual environment in common locations
+        if [ -f "$SCRIPT_DIR/venv/bin/activate" ]; then
+            print_info "Found virtual environment at $SCRIPT_DIR/venv/"
+            source "$SCRIPT_DIR/venv/bin/activate"
+            if [ -n "$VIRTUAL_ENV" ]; then
+                print_status "Successfully activated virtual environment: $VIRTUAL_ENV"
+            else
+                print_error "Failed to activate virtual environment at $SCRIPT_DIR/venv/"
+                print_info "Please activate your virtual environment manually:"
+                print_info "  source venv/bin/activate"
+                print_info "  $0 start"
+                return 1
+            fi
+        elif [ -f "$SCRIPT_DIR/.venv/bin/activate" ]; then
+            print_info "Found virtual environment at $SCRIPT_DIR/.venv/"
+            source "$SCRIPT_DIR/.venv/bin/activate"
+            if [ -n "$VIRTUAL_ENV" ]; then
+                print_status "Successfully activated virtual environment: $VIRTUAL_ENV"
+            else
+                print_error "Failed to activate virtual environment at $SCRIPT_DIR/.venv/"
+                print_info "Please activate your virtual environment manually:"
+                print_info "  source .venv/bin/activate"
+                print_info "  $0 start"
+                return 1
+            fi
+        else
+            print_error "No virtual environment found!"
+            print_info "Please create and activate a virtual environment first:"
+            print_info "  uv venv venv (or python3 -m venv venv)"
+            print_info "  source venv/bin/activate"
+            print_info "  uv sync (or pip install -r requirements.txt)"
+            print_info "  $0 start"
+            return 1
+        fi
     fi
 
     print_info "Using virtual environment: $VIRTUAL_ENV"
@@ -108,7 +367,8 @@ start_app() {
     # Check if Flask is installed
     if ! python -c "import flask" 2>/dev/null; then
         print_error "Flask not found in current environment"
-        print_info "Install requirements: pip install flask requests"
+        print_info "Install requirements with uv: uv sync"
+        print_info "Or with pip: pip install flask requests"
         return 1
     fi
 
@@ -296,6 +556,8 @@ restart_app() {
 
 # Function to check status
 check_status() {
+    print_info "=== Application Status ==="
+    
     if [ -f "$PID_FILE" ]; then
         local pid=$(cat "$PID_FILE")
         if ps -p $pid > /dev/null 2>&1; then
@@ -331,43 +593,128 @@ check_status() {
             done
         fi
     fi
+    
+    echo ""
+    print_info "=== Backend Status ==="
+    list_available_backends
+}
+
+# Function to handle backend management commands
+handle_backend_command() {
+    local subcommand=$1
+    local backend_name=$2
+    
+    case "$subcommand" in
+        "status")
+            list_available_backends
+            ;;
+        "switch")
+            switch_backend "$backend_name"
+            ;;
+        "list")
+            list_available_backends
+            ;;
+        "health")
+            local backend=${backend_name:-$(get_active_backend)}
+            if [ -n "$backend" ]; then
+                print_info "Checking health of backend: $backend"
+                if check_backend_health "$backend"; then
+                    print_status "Backend '$backend' is healthy ✓"
+                else
+                    print_error "Backend '$backend' is not healthy ✗"
+                    case "$backend" in
+                        "ollama")
+                            print_info "Make sure Ollama is running and accessible"
+                            local base_url=$(get_config_value "ollama.base_url")
+                            if [ -n "$base_url" ]; then
+                                print_info "Configured URL: $base_url"
+                            fi
+                            ;;
+                        "llamacpp")
+                            print_info "Check if llama-cpp-python is installed and GGUF models are available"
+                            local model_path=$(get_config_value "llamacpp.model_path")
+                            if [ -n "$model_path" ]; then
+                                print_info "Model path: $SCRIPT_DIR/$model_path"
+                            fi
+                            ;;
+                    esac
+                fi
+            else
+                print_error "No backend specified and no active backend configured"
+            fi
+            ;;
+        *)
+            print_error "Unknown backend command: $subcommand"
+            echo ""
+            echo "Backend management commands:"
+            echo "  $0 backend status        - Show status of all backends"
+            echo "  $0 backend list          - List all available backends"
+            echo "  $0 backend switch <name> - Switch to a different backend"
+            echo "  $0 backend health [name] - Check health of specific backend"
+            echo ""
+            echo "Available backends: ollama, llamacpp"
+            return 1
+            ;;
+    esac
 }
 
 # Function to show usage
 show_usage() {
-    echo "Chat-O-Llama Process Manager (chat-o-llama)"
+    echo "Chat-O-Llama Process Manager with Multi-Backend Support"
     echo ""
-    echo "Usage: $0 [command] [port]"
+    echo "Usage: $0 [command] [options]"
     echo ""
     echo "Prerequisites:"
-    echo "  - Virtual environment must be created manually: python3 -m venv venv"
-    echo "  - Dependencies must be installed: pip install flask requests"
+    echo "  - Virtual environment must be created manually: uv venv venv (or python3 -m venv venv)"
+    echo "  - Dependencies must be installed: uv sync (or pip install flask requests)"
     echo "  - Virtual environment must be activated before running: source venv/bin/activate"
     echo ""
-    echo "Commands:"
-    echo "  start [port]  - Start Chat-O-Llama (default port: $DEFAULT_PORT)"
-    echo "  stop          - Stop Chat-O-Llama gracefully"
-    echo "  force-stop    - Force kill all Chat-O-Llama processes"
-    echo "  restart [port]- Restart Chat-O-Llama"
-    echo "  status        - Check if Chat-O-Llama is running"
-    echo "  logs          - Show recent logs"
-    echo "  help          - Show this help message"
+    echo "Application Commands:"
+    echo "  start [port]     - Start Chat-O-Llama (default port: $DEFAULT_PORT)"
+    echo "  stop             - Stop Chat-O-Llama gracefully"
+    echo "  force-stop       - Force kill all Chat-O-Llama processes"
+    echo "  restart [port]   - Restart Chat-O-Llama"
+    echo "  status           - Check application and backend status"
+    echo "  logs             - Show recent logs"
+    echo "  help             - Show this help message"
+    echo ""
+    echo "Backend Management Commands:"
+    echo "  backend status        - Show status of all backends"
+    echo "  backend list          - List all available backends"
+    echo "  backend switch <name> - Switch to a different backend (ollama|llamacpp)"
+    echo "  backend health [name] - Check health of specific backend"
     echo ""
     echo "Examples:"
+    echo "  # Application management"
     echo "  source venv/bin/activate"
-    echo "  $0 start      - Start on port $DEFAULT_PORT"
-    echo "  $0 start 8080 - Start on port 8080"
-    echo "  $0 stop       - Stop the service"
-    echo "  $0 status     - Check status"
+    echo "  $0 start         - Start on port $DEFAULT_PORT"
+    echo "  $0 start 8080    - Start on port 8080"
+    echo "  $0 stop          - Stop the service"
+    echo "  $0 status        - Check status"
     echo ""
-    echo "Setup:"
+    echo "  # Backend management"
+    echo "  $0 backend status           - Show all backend status"
+    echo "  $0 backend switch ollama    - Switch to Ollama backend"
+    echo "  $0 backend switch llamacpp  - Switch to llama.cpp backend"
+    echo "  $0 backend health           - Check active backend health"
+    echo ""
+    echo "Setup (with uv - recommended):"
+    echo "  1. uv venv venv"
+    echo "  2. source venv/bin/activate"
+    echo "  3. uv sync"
+    echo "  4. $0 backend status  # Check backend availability"
+    echo "  5. $0 start"
+    echo ""
+    echo "Setup (with pip - fallback):"
     echo "  1. python3 -m venv venv"
     echo "  2. source venv/bin/activate"
     echo "  3. pip install -r requirements.txt"
-    echo "  4. $0 start"
+    echo "  4. $0 backend status  # Check backend availability"
+    echo "  5. $0 start"
     echo ""
     echo "Files:"
     echo "  PID file: $PID_FILE"
+    echo "  Config file: $CONFIG_FILE"
     echo "  Log directory: $LOG_DIR"
     echo "  Current log: chat-o-llama_YYYYMMDD_HHMMSS.log"
 }
@@ -405,6 +752,9 @@ case "${1:-help}" in
         ;;
     logs)
         show_logs
+        ;;
+    backend)
+        handle_backend_command $2 $3
         ;;
     help|--help|-h)
         show_usage

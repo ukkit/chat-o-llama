@@ -12,9 +12,11 @@ Complete REST API reference for chat-o-llama with examples and integration guide
 - [Rate Limiting](#rate-limiting)
 - [API Endpoints](#api-endpoints)
   - [Models](#models)
+  - [Backend Management](#backend-management) ⭐ *New*
   - [Configuration](#configuration)
   - [Conversations](#conversations)
   - [Messages](#messages)
+  - [Context Compression](#context-compression) ⭐ *New*
   - [Statistics](#statistics)
   - [Search](#search)
 - [WebSocket Support](#websocket-support)
@@ -25,7 +27,7 @@ Complete REST API reference for chat-o-llama with examples and integration guide
 
 ## Overview
 
-The chat-o-llama API provides RESTful endpoints for managing conversations, sending messages to Ollama models, and configuring the chat interface. All endpoints return JSON responses and support standard HTTP methods.
+The chat-o-llama API provides RESTful endpoints for managing conversations, sending messages to AI models (Ollama and llama.cpp), managing multiple backends, and configuring the chat interface. All endpoints return JSON responses and support standard HTTP methods.
 
 ### API Features
 - 🔗 **RESTful Design** - Standard HTTP methods and status codes
@@ -34,7 +36,11 @@ The chat-o-llama API provides RESTful endpoints for managing conversations, send
 - ⚙️ **Configuration Management** - Runtime configuration access
 - 💬 **Real-time Chat** - Streaming and non-streaming responses
 - 📊 **Model Management** - Dynamic model selection and info
+- 🔄 **Multi-Backend Support** - Ollama and llama.cpp backend management ⭐ *New*
+- 🎛️ **Backend Switching** - Real-time AI backend switching ⭐ *New*
+- 📈 **Health Monitoring** - Backend status and health checks ⭐ *New*
 - ⚡ **Performance Metrics** - Response times and token tracking ⭐ *New*
+- 🗜️ **Context Compression** - Intelligent conversation optimization ⭐ *New*
 - 📈 **Analytics** - Conversation statistics and insights ⭐ *New*
 
 ---
@@ -42,7 +48,7 @@ The chat-o-llama API provides RESTful endpoints for managing conversations, send
 ## Base URL
 
 ```
-http://localhost:8080/api
+http://localhost:3113/api
 ```
 
 **Production/Remote:**
@@ -139,43 +145,70 @@ Currently no rate limiting is implemented. For production use, consider implemen
 
 ## Models
 
-### GET /api/models
-Get list of available Ollama models.
+### GET /api/models ⭐ *Enhanced with Multi-Backend Support*
+Get list of available models from active AI backend (Ollama or llama.cpp).
 
 #### Request
 ```http
 GET /api/models HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 Content-Type: application/json
 ```
 
-#### Response
+#### Response ⭐ *Enhanced with backend information*
 ```json
 {
   "models": [
     "qwen2.5:0.5b",
-    "llama3.2:1b",
+    "llama3.2:1b", 
     "phi3:mini",
-    "tinyllama"
+    "llamacpp:llama-2-7b-chat.Q4_0"
   ],
   "count": 4,
-  "ollama_url": "http://localhost:11434"
+  "active_backend": {
+    "type": "ollama",
+    "status": "healthy",
+    "url": "http://localhost:11434",
+    "models_count": 3
+  },
+  "health_check": {
+    "timestamp": "2025-01-17T10:30:00Z",
+    "status": "healthy",
+    "response_time_ms": 45
+  }
 }
 ```
+
+#### Multi-Backend Features ⭐:
+- **`active_backend`** - Information about the currently active AI backend
+- **`health_check`** - Real-time backend health status and performance
+- **Backend-prefixed models** - Models prefixed with backend type for clarity
+- **Automatic backend switching** - Falls back to secondary backend if primary fails
 
 #### Error Response
 ```json
 {
   "models": [],
   "count": 0,
-  "error": "Connection to Ollama failed",
-  "ollama_url": "http://localhost:11434"
+  "error": "No healthy backends available",
+  "active_backend": {
+    "type": "ollama",
+    "status": "unhealthy",
+    "url": "http://localhost:11434",
+    "models_count": 0
+  },
+  "health_check": {
+    "timestamp": "2025-01-17T10:30:00Z",
+    "status": "unhealthy",
+    "response_time_ms": null,
+    "error": "Connection timeout"
+  }
 }
 ```
 
 #### cURL Example
 ```bash
-curl -X GET http://localhost:8080/api/models
+curl -X GET http://localhost:3113/api/models
 ```
 
 #### JavaScript Example
@@ -183,6 +216,180 @@ curl -X GET http://localhost:8080/api/models
 const response = await fetch('/api/models');
 const data = await response.json();
 console.log('Available models:', data.models);
+```
+
+---
+
+## Backend Management ⭐ *New*
+
+### GET /api/backend/status
+Get comprehensive status information for all configured backends.
+
+#### Request
+```http
+GET /api/backend/status HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "backends": {
+    "ollama": {
+      "status": "healthy",
+      "url": "http://localhost:11434",
+      "models_count": 3,
+      "last_check": "2025-01-17T10:30:00Z",
+      "response_time_ms": 45,
+      "capabilities": ["chat", "embeddings"],
+      "version": "0.1.17"
+    },
+    "llamacpp": {
+      "status": "healthy", 
+      "model_path": "/models",
+      "models_count": 2,
+      "last_check": "2025-01-17T10:30:00Z",
+      "response_time_ms": 12,
+      "capabilities": ["chat", "local_inference"],
+      "memory_usage": "2.1GB"
+    }
+  },
+  "active_backend": "ollama",
+  "auto_fallback": true,
+  "health_check_interval": 30
+}
+```
+
+### GET /api/backend/info
+Get information about the currently active backend.
+
+#### Request
+```http
+GET /api/backend/info HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "backend_type": "ollama",
+  "status": "healthy",
+  "url": "http://localhost:11434",
+  "models_count": 3,
+  "capabilities": ["chat", "embeddings"],
+  "version": "0.1.17",
+  "uptime": "2h 45m",
+  "last_health_check": "2025-01-17T10:30:00Z"
+}
+```
+
+### POST /api/backend/switch
+Switch to a different AI backend.
+
+#### Request
+```http
+POST /api/backend/switch HTTP/1.1
+Host: localhost:3113
+Content-Type: application/json
+
+{
+  "backend_type": "llamacpp"
+}
+```
+
+#### Response
+```json
+{
+  "success": true,
+  "previous_backend": "ollama",
+  "current_backend": "llamacpp",
+  "models_available": 2,
+  "switch_time_ms": 156,
+  "message": "Successfully switched to llamacpp backend"
+}
+```
+
+#### Error Response
+```json
+{
+  "success": false,
+  "error": "Backend 'llamacpp' is not healthy",
+  "current_backend": "ollama",
+  "available_backends": ["ollama"]
+}
+```
+
+### GET /api/backend/models
+Get models from all backends with backend identification.
+
+#### Request
+```http
+GET /api/backend/models HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "models_by_backend": {
+    "ollama": [
+      {
+        "name": "qwen2.5:0.5b",
+        "size": "374MB",
+        "modified": "2025-01-15T14:30:00Z"
+      },
+      {
+        "name": "llama3.2:1b", 
+        "size": "1.3GB",
+        "modified": "2025-01-14T09:15:00Z"
+      }
+    ],
+    "llamacpp": [
+      {
+        "name": "llama-2-7b-chat.Q4_0",
+        "size": "3.8GB",
+        "quantization": "Q4_0",
+        "path": "/models/llama-2-7b-chat.Q4_0.gguf"
+      }
+    ]
+  },
+  "total_models": 3,
+  "active_backend": "ollama"
+}
+```
+
+### POST /api/backend/health
+Manually trigger health checks for all backends.
+
+#### Request
+```http
+POST /api/backend/health HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "health_checks": {
+    "ollama": {
+      "status": "healthy",
+      "response_time_ms": 67,
+      "timestamp": "2025-01-17T10:35:00Z",
+      "error": null
+    },
+    "llamacpp": {
+      "status": "healthy",
+      "response_time_ms": 23,
+      "timestamp": "2025-01-17T10:35:00Z", 
+      "error": null
+    }
+  },
+  "summary": {
+    "healthy_backends": 2,
+    "total_backends": 2,
+    "fastest_backend": "llamacpp"
+  }
+}
 ```
 
 ---
@@ -195,7 +402,7 @@ Get current application configuration (excluding sensitive data).
 #### Request
 ```http
 GET /api/config HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 ```
 
 #### Response
@@ -236,14 +443,14 @@ Host: localhost:8080
 
 #### cURL Example
 ```bash
-curl -X GET http://localhost:8080/api/config
+curl -X GET http://localhost:3113/api/config
 ```
 
 #### Python Example
 ```python
 import requests
 
-response = requests.get('http://localhost:8080/api/config')
+response = requests.get('http://localhost:3113/api/config')
 config = response.json()
 print(f"Timeout: {config['timeouts']['ollama_timeout']}s")
 ```
@@ -258,7 +465,7 @@ Get list of all conversations ordered by last update.
 #### Request
 ```http
 GET /api/conversations HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 ```
 
 #### Query Parameters
@@ -291,7 +498,7 @@ Host: localhost:8080
 
 #### cURL Example
 ```bash
-curl -X GET http://localhost:8080/api/conversations
+curl -X GET http://localhost:3113/api/conversations
 ```
 
 ### POST /api/conversations
@@ -300,7 +507,7 @@ Create a new conversation.
 #### Request
 ```http
 POST /api/conversations HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 Content-Type: application/json
 
 {
@@ -324,7 +531,7 @@ Content-Type: application/json
 
 #### cURL Example
 ```bash
-curl -X POST http://localhost:8080/api/conversations \
+curl -X POST http://localhost:3113/api/conversations \
   -H "Content-Type: application/json" \
   -d '{
     "title": "New Project Discussion",
@@ -355,7 +562,7 @@ Get specific conversation with all messages and statistics.
 #### Request
 ```http
 GET /api/conversations/1 HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 ```
 
 #### Response
@@ -413,7 +620,7 @@ Host: localhost:8080
 
 #### cURL Example
 ```bash
-curl -X GET http://localhost:8080/api/conversations/1
+curl -X GET http://localhost:3113/api/conversations/1
 ```
 
 ### PUT /api/conversations/{id}
@@ -422,7 +629,7 @@ Update conversation (rename).
 #### Request
 ```http
 PUT /api/conversations/1 HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 Content-Type: application/json
 
 {
@@ -463,7 +670,7 @@ Content-Type: application/json
 
 #### cURL Example
 ```bash
-curl -X PUT http://localhost:8080/api/conversations/1 \
+curl -X PUT http://localhost:3113/api/conversations/1 \
   -H "Content-Type: application/json" \
   -d '{"title": "Updated Conversation Title"}'
 ```
@@ -474,7 +681,7 @@ Delete conversation and all its messages.
 #### Request
 ```http
 DELETE /api/conversations/1 HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 ```
 
 #### Response
@@ -486,7 +693,7 @@ Host: localhost:8080
 
 #### cURL Example
 ```bash
-curl -X DELETE http://localhost:8080/api/conversations/1
+curl -X DELETE http://localhost:3113/api/conversations/1
 ```
 
 ---
@@ -499,7 +706,7 @@ Send a message and get AI response with performance metrics.
 #### Request
 ```http
 POST /api/chat HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 Content-Type: application/json
 
 {
@@ -570,7 +777,7 @@ const evalTimeMs = data.metrics.eval_duration / 1000000;
 
 #### cURL Example
 ```bash
-curl -X POST http://localhost:8080/api/chat \
+curl -X POST http://localhost:3113/api/chat \
   -H "Content-Type: application/json" \
   -d '{
     "conversation_id": 1,
@@ -583,7 +790,7 @@ curl -X POST http://localhost:8080/api/chat \
 ```python
 import requests
 
-response = requests.post('http://localhost:8080/api/chat', json={
+response = requests.post('http://localhost:3113/api/chat', json={
     'conversation_id': 1,
     'message': 'Explain machine learning in simple terms',
     'model': 'qwen2.5:0.5b'
@@ -626,7 +833,7 @@ Get detailed conversation statistics and analytics.
 #### Request
 ```http
 GET /api/stats/1 HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 ```
 
 #### Response
@@ -673,14 +880,14 @@ Host: localhost:8080
 
 #### cURL Example
 ```bash
-curl -X GET http://localhost:8080/api/stats/1
+curl -X GET http://localhost:3113/api/stats/1
 ```
 
 #### Python Example
 ```python
 import requests
 
-response = requests.get('http://localhost:8080/api/stats/1')
+response = requests.get('http://localhost:3113/api/stats/1')
 stats = response.json()
 
 print(f"Total messages: {stats['summary']['total_messages']}")
@@ -702,6 +909,170 @@ for role_stats in stats['by_role']:
 
 ---
 
+## Context Compression ⭐ *New*
+
+### GET /api/chat/compression/recommendations/{conversation_id}
+Get compression recommendations for a conversation.
+
+#### Request
+```http
+GET /api/chat/compression/recommendations/1 HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "conversation_id": 1,
+  "recommendations": {
+    "should_compress": true,
+    "compression_strategy": "hybrid",
+    "estimated_savings": {
+      "tokens_saved": 1240,
+      "percentage_reduction": 35,
+      "new_context_size": 2860
+    },
+    "reasons": [
+      "Conversation exceeds context window",
+      "Many repetitive messages detected",
+      "Recent messages are most important"
+    ]
+  },
+  "current_stats": {
+    "total_messages": 45,
+    "total_tokens": 4100,
+    "context_window": 4096
+  }
+}
+```
+
+### GET /api/chat/compression/analyze/{conversation_id}
+Analyze conversation importance and compression potential.
+
+#### Request
+```http
+GET /api/chat/compression/analyze/1 HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "conversation_id": 1,
+  "analysis": {
+    "importance_scores": {
+      "high_importance": 12,
+      "medium_importance": 18,
+      "low_importance": 15
+    },
+    "compression_potential": {
+      "summary_candidates": 25,
+      "removable_messages": 8,
+      "preserved_messages": 12
+    },
+    "content_analysis": {
+      "code_blocks": 5,
+      "questions": 8,
+      "answers": 7,
+      "context_references": 3
+    }
+  }
+}
+```
+
+### GET /api/chat/compression/stats/{conversation_id}
+Get compression statistics for a conversation.
+
+#### Request
+```http
+GET /api/chat/compression/stats/1 HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "conversation_id": 1,
+  "compression_stats": {
+    "total_compressions": 3,
+    "last_compression": "2025-01-17T09:45:00Z",
+    "total_tokens_saved": 2180,
+    "average_compression_ratio": 0.32,
+    "quality_score": 0.87
+  },
+  "performance_metrics": {
+    "average_compression_time_ms": 145,
+    "cache_hit_rate": 0.78,
+    "effectiveness_rating": "excellent"
+  }
+}
+```
+
+### POST /api/chat/compression/force/{conversation_id}
+Manually trigger compression for a conversation.
+
+#### Request
+```http
+POST /api/chat/compression/force/1 HTTP/1.1
+Host: localhost:3113
+Content-Type: application/json
+
+{
+  "strategy": "hybrid",
+  "preserve_recent": 5,
+  "force": true
+}
+```
+
+#### Response
+```json
+{
+  "success": true,
+  "conversation_id": 1,
+  "compression_result": {
+    "strategy_used": "hybrid",
+    "messages_before": 45,
+    "messages_after": 28,
+    "tokens_saved": 1580,
+    "compression_ratio": 0.38,
+    "processing_time_ms": 234,
+    "quality_score": 0.91
+  },
+  "summary": "Successfully compressed conversation using hybrid strategy"
+}
+```
+
+### GET /api/chat/compression/status
+Get overall compression system status.
+
+#### Request
+```http
+GET /api/chat/compression/status HTTP/1.1
+Host: localhost:3113
+```
+
+#### Response
+```json
+{
+  "compression_enabled": true,
+  "active_strategies": ["rolling_window", "intelligent_summary", "hybrid"],
+  "system_stats": {
+    "total_conversations_compressed": 156,
+    "total_tokens_saved": 45780,
+    "average_quality_score": 0.89,
+    "cache_size": "12.3MB",
+    "cache_hit_rate": 0.82
+  },
+  "performance": {
+    "average_compression_time_ms": 178,
+    "compression_queue_size": 2,
+    "last_cleanup": "2025-01-17T08:30:00Z"
+  }
+}
+```
+
+---
+
 ## Search
 
 ### GET /api/search ⭐ *Enhanced*
@@ -710,7 +1081,7 @@ Search conversations and messages with performance metrics.
 #### Request
 ```http
 GET /api/search?q=machine%20learning HTTP/1.1
-Host: localhost:8080
+Host: localhost:3113
 ```
 
 #### Query Parameters
@@ -766,7 +1137,7 @@ Host: localhost:8080
 
 #### cURL Example
 ```bash
-curl -X GET "http://localhost:8080/api/search?q=machine%20learning"
+curl -X GET "http://localhost:3113/api/search?q=machine%20learning"
 ```
 
 #### JavaScript Example
@@ -796,7 +1167,7 @@ Real-time chat with streaming responses.
 
 ```javascript
 // Planned implementation
-const ws = new WebSocket('ws://localhost:8080/ws/chat');
+const ws = new WebSocket('ws://localhost:3113/ws/chat');
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
@@ -827,7 +1198,7 @@ import requests
 from typing import List, Dict, Optional
 
 class ChatOLlamaAPI:
-    def __init__(self, base_url: str = "http://localhost:8080"):
+    def __init__(self, base_url: str = "http://localhost:3113"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
 
@@ -904,7 +1275,7 @@ for result in results:
 
 ```javascript
 class ChatOLlamaAPI {
-    constructor(baseUrl = 'http://localhost:8080') {
+    constructor(baseUrl = 'http://localhost:3113') {
         this.baseUrl = baseUrl;
         this.apiUrl = `${baseUrl}/api`;
     }
@@ -1003,7 +1374,7 @@ Create a Postman collection with these requests:
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/api"
+      "value": "http://localhost:3113/api"
     }
   ],
   "item": [
@@ -1099,7 +1470,7 @@ Create a Postman collection with these requests:
 #!/bin/bash
 # test-api.sh - Test all API endpoints including new metrics features
 
-BASE_URL="http://localhost:8080/api"
+BASE_URL="http://localhost:3113/api"
 
 echo "Testing chat-o-llama API v1.1 with metrics..."
 
@@ -1158,7 +1529,7 @@ def test_chat_performance_with_metrics(num_requests=10):
     """Test chat endpoint performance with detailed metrics analysis."""
 
     # Create test conversation
-    conv_response = requests.post('http://localhost:8080/api/conversations', json={
+    conv_response = requests.post('http://localhost:3113/api/conversations', json={
         'title': 'Performance Test with Metrics',
         'model': 'qwen2.5:0.5b'
     })
@@ -1166,7 +1537,7 @@ def test_chat_performance_with_metrics(num_requests=10):
 
     def send_message(i):
         start_time = time.time()
-        response = requests.post('http://localhost:8080/api/chat', json={
+        response = requests.post('http://localhost:3113/api/chat', json={
             'conversation_id': conv_id,
             'message': f'Test message {i} - please respond with a short answer',
             'model': 'qwen2.5:0.5b'
@@ -1232,7 +1603,7 @@ def test_chat_performance_with_metrics(num_requests=10):
         print(f"  Best speed: {max(token_speeds):.1f} tokens/sec")
 
     # Get final conversation stats
-    stats_response = requests.get(f'http://localhost:8080/api/stats/{conv_id}')
+    stats_response = requests.get(f'http://localhost:3113/api/stats/{conv_id}')
     if stats_response.status_code == 200:
         stats = stats_response.json()
         print(f"\n📈 Final Conversation Stats:")
@@ -1246,7 +1617,7 @@ def test_concurrent_performance(num_concurrent=5, num_requests_each=3):
     print(f"\n🔀 Testing {num_concurrent} concurrent clients, {num_requests_each} requests each...")
     
     # Create test conversation
-    conv_response = requests.post('http://localhost:8080/api/conversations', json={
+    conv_response = requests.post('http://localhost:3113/api/conversations', json={
         'title': 'Concurrent Performance Test',
         'model': 'qwen2.5:0.5b'
     })
@@ -1256,7 +1627,7 @@ def test_concurrent_performance(num_concurrent=5, num_requests_each=3):
         results = []
         for i in range(num_requests_each):
             start_time = time.time()
-            response = requests.post('http://localhost:8080/api/chat', json={
+            response = requests.post('http://localhost:3113/api/chat', json={
                 'conversation_id': conv_id,
                 'message': f'Concurrent test from worker {worker_id}, request {i}',
                 'model': 'qwen2.5:0.5b'

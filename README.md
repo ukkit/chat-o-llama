@@ -1,93 +1,116 @@
-# chat-o-llama 🦙
+# Chat-O-Llama 🦙
 
-**Your lightweight, private, local AI chatbot (no GPU needed**
+### ⚡Best of Both Worlds: Now supporting Ollama AND Llama.cpp - switch backends on the fly!
+---
 
-A lightweight yet powerful web interface for Ollama with markdown rendering, syntax highlighting, and intelligent conversation management.
+A lightweight yet powerful web interface for Ollama and llama.cpp with markdown rendering, syntax highlighting, and intelligent conversation management.
 
-![Ollama Chat Interface](https://img.shields.io/badge/Interface-Web%20Based-blue) ![Python](https://img.shields.io/badge/Python-3.8%2B-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![Ollama Chat Interface](https://img.shields.io/badge/Interface-Web%20Based-blue)
+![Python](https://img.shields.io/badge/Python-3.10%2B-green)
+![Ollama](https://img.shields.io/badge/connect-OLLAMA-blue)
+![Llama.cpp](https://img.shields.io/badge/connect-LLAMA.CPP-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-%E2%98%95-yellow)](https://buymeacoffee.com/ukkit)
+
+## ⁉️ Why Another App?
+
+Because **_why not_**? Having choices puts you in control.
 
 ## ✨ Features
 
-- 💬 **Multiple Conversations** - Create, manage, and rename chat sessions
-- 📚 **Persistent History** - SQLite database storage with search functionality
-- 🤖 **Model Selection** - Choose from downloaded Ollama models
-- 🚀 **Lightweight** - Minimal resource usage for local development
-- 📝 **Full Markdown rendering** - with GitHub-flavored syntax
-- 📊 **Response metrics** - time, tokens, and speed tracking
+- **Ollama Support** - Full integration with Ollama AI platform
+- **llama.cpp Support** - Direct GGUF model support with high-performance inference
+- **Multiple Conversations** - Create, manage, and rename chat sessions
+- **Persistent History** - SQLite database storage with search functionality
+- **Multi-Backend Support** - Automatic fallback between backends
+- **Model Selection** - Choose from downloaded models across backends
+- **Lightweight** - Minimal resource usage for local development
+- **Full Markdown rendering** - GitHub-flavored syntax support
+- **Response metrics** - Time, tokens, and speed tracking
 
-## 🚀 30-Second Quick Start
+## 🚀 Quick Start
 
-**For most users (auto-install):**
+**Automatic installation (recommended):**
 
 ```bash
 curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install.sh | bash
 ```
 
-What happens?
-- Installs Python/Ollama if missing (takes time)
-- Downloads recommended model (~380MB)
-- Installs chat-o-llama
-Access at: ```http://localhost:3000```
+This will:
+- Install Python and uv if missing
+- Install Ollama if not present
+- Download and set up Chat-O-Llama
+- Start the service at http://localhost:3113
 
-<details> <summary><b>🔧 Advanced Setup (Manual Install)</b></summary>
-
-For detailed manual installation steps, see **[install.md](./docs/install.md)**
+**Manual installation:**
 
 ```bash
 git clone https://github.com/ukkit/chat-o-llama.git
 cd chat-o-llama
-python3 -m venv venv
+
+# Using uv (recommended - faster and more reliable)
+uv venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+uv sync
+
 ./chat-manager.sh start
 ```
 
-</details>
+*Installing llama.cpp*
+
+```bash
+curl -fsSL https://github.com/ukkit/chat-o-llama/raw/main/install-llamacpp.sh | bash
+```
+For detailed manual installation steps, see [install.md](./docs/install.md)
 
 ## 📸 Screenshots
 
-<details> <summary><b> 📷 App Screenshots</b></summary>
+<details> <summary><b>App Screenshots</b></summary>
 
 ![chat-o-llama - First Screen](./docs/assets/screenshot1.png)
 First screen after installation
 
-![chat-o-llama - New Chat Screen](./docs/assets/screenshot2.png)
-New chat screen with default model
+![chat-o-llama - Switch between ollama and llama.cpp](./docs/assets/screenshot2.png)
+Available backends - Ollama and Llama.cpp
 
-![chat-o-llama - Chat Bubble](./docs/assets/screenshot3.png)
-Chat bubble, reply from the model
+![chat-o-llama - Quick switch](./docs/assets/screenshot3.png)
+Quick switch between Ollama and Llama.cpp
 
-![chat-o-llama - Markdown Support](./docs/assets/screenshot4.png)
-Support for Markdown in chat
+![chat-o-llama - Chat in llama.cpp](./docs/assets/screenshot4.png)
+Chat in llama.cpp with visible L indicator
 
-![chat-o-llama - Select Model](./docs/assets/screenshot5.png)
-Support to select from list of models
+![chat-o-llama - Chat in Ollam](./docs/assets/screenshot5.png)
+Chat in Ollama with visible O indicator
 
-![chat-o-llama - Thinking](./docs/assets/screenshot6.png)
+![chat-o-llama - Quick Switch back](./docs/assets/screenshot6.png)
 Thinking styling
 
 </details>
 
-## 🛠️ Need Help?
+## 🔧 Troubleshooting
 
-Quick Fixes:
+**Common issues:**
 
-- Port in use? → ./chat-manager.sh start 8080
-- No models? → ollama pull tinyllama
+- Port in use? Run: `./chat-manager.sh start 3030`
+- No models? Install one: `ollama pull tinyllama`
+- Backend issues? Check status: `./chat-manager.sh backend status`
 
-## 📚 Documentation Links
+## 📚 Documentation
+
+<details><summary>⚠️ Documentation updates in progress </summary>
 
 | Document | Description |
 |---------|-------------|
-| [Installation Guide](./docks/install.md) | Installation Guide |
-| [Features](./docks/features.md) | Detailed features guide |
-| [Startup & Process Guide](./docks/chat_manager_docs.md) | Startup & Process Management via chat-manager.sh |
-| [Config Guide](./docs/config.md) | Configuration Guide |
-| [Config Comparison](./docs/config_comparison.md) | Compare different configs |
-| [API Guide](./docs/api.md) | API Guide |
-| [Troubleshooting Guide](./docs/troubleshooting.md) | Troubleshooting Guide |
+| [Installation Guide](./docs/install.md) | Detailed installation instructions |
+| [Features](./docs/features.md) | Complete features overview |
+| [Process Management](./docs/chat_manager_docs.md) | Using chat-manager.sh for service control |
+| [Configuration](./docs/config.md) | Configuration options and settings |
+| [API Reference](./docs/api.md) | REST API documentation |
+| [Troubleshooting](./docs/troubleshooting.md) | Common issues and solutions |
 
-## ✔️ Tested On (Hardware)
+</details>
+
+## 🖥  Tested Hardware
 
 | Device | CPU | RAM | OS |
 |---------|-------------|---------|-------------|
@@ -95,16 +118,18 @@ Quick Fixes:
 | Dell Optiplex 3070 | i3-9100T | 8GB | Debian 12 |
 | Nokia Purebook X14 | i5-10210U | 16 GB | Windows 11 Home |
 
+## 🐛 Known Issues
 
-## 🙏 Acknowledgments
-
-- [Ollama](https://ollama.ai/) - Local AI platform
-- [Flask](https://flask.palletsprojects.com/) - Web framework
-
-**Made with ❤️ for the AI community**
-
-> ⭐ Star this project if you find it helpful!
+_Quiet a few known issues we are working on._
 
 ---
 
-MIT License - see [LICENSE](LICENSE) file.
+If you find this project helpful, consider:
+
+- 🌟 Starring the repository on GitHub
+- 🤝 [Supporting development](https://buymeacoffee.com/ukkit)
+- 🐛 Reporting bugs and suggesting features
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.

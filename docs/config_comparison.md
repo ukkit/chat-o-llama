@@ -165,7 +165,7 @@ Test your configuration:
 python -m json.tool config.json
 
 # Test with API
-curl http://localhost:3000/api/config
+curl http://localhost:3113/api/config
 
 # Monitor performance
 ./chat-manager.sh logs | grep "duration"
