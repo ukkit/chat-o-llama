@@ -200,6 +200,15 @@ def api_chat():
     if not conversation_id or not message:
         return jsonify({'error': 'Missing conversation_id or message'}), 400
 
+    # Get the conversation to use its original model
+    conversation = ConversationManager.get_conversation(conversation_id)
+    if not conversation:
+        return jsonify({'error': 'Conversation not found'}), 404
+    
+    # Always use the conversation's original model, not the one from the request
+    conversation_model = conversation['model']
+    logger.info(f"Using conversation's original model '{conversation_model}' instead of requested model '{model}'")
+
     # Get backend type for storing in database
     try:
         backend = get_active_backend()
@@ -213,7 +222,7 @@ def api_chat():
     request_manager = get_request_manager()
     request_id = request_manager.create_request(
         conversation_id=conversation_id,
-        model=model,
+        model=conversation_model,
         message=message,
         backend_type=backend_type,
         user_session=request.headers.get('X-Session-Id'),
@@ -226,7 +235,7 @@ def api_chat():
     # Add user message
     user_tokens = estimate_tokens(message)
     ConversationManager.add_message(
-        conversation_id, 'user', message, model, None, user_tokens, backend_type
+        conversation_id, 'user', message, conversation_model, None, user_tokens, backend_type
     )
 
     # Get conversation history for context with compression
@@ -235,7 +244,7 @@ def api_chat():
     
     # Use compression-enabled context preparation
     formatted_messages, context_metadata = ConversationManager.prepare_context_for_llm(
-        conversation_id, model, max_context_tokens
+        conversation_id, conversation_model, max_context_tokens
     )
     
     # Remove the last message (current user message) from history for context
@@ -271,7 +280,7 @@ def api_chat():
         
         # Pass cancellation token and request_id to backend if supported
         response_data = backend.generate_response(
-            model, enhanced_message, history, 
+            conversation_model, enhanced_message, history, 
             cancellation_token=cancellation_token,
             request_id=request_id
         )
@@ -304,7 +313,7 @@ def api_chat():
         conversation_id, 
         'assistant', 
         response_data['response'], 
-        model,
+        conversation_model,
         response_data['response_time_ms'],
         response_data['estimated_tokens'],
         backend_type
@@ -312,7 +321,7 @@ def api_chat():
 
     return jsonify({
         'response': response_data['response'],
-        'model': model,
+        'model': conversation_model,
         'backend_type': backend_type,
         'response_time_ms': response_data['response_time_ms'],
         'estimated_tokens': response_data['estimated_tokens'],

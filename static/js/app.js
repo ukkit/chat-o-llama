@@ -99,6 +99,96 @@ function getRandomThinkingText() {
     return thinkingSynonyms[Math.floor(Math.random() * thinkingSynonyms.length)];
 }
 
+// Restore model selector to normal state (when no conversation is active)
+function restoreModelSelector() {
+    const modelSelect = document.getElementById('modelSelect');
+    if (!modelSelect) return;
+    
+    // Always keep model selector enabled for user interaction
+    modelSelect.disabled = false;
+    modelSelect.title = '';
+    
+    // Reload all available models
+    loadModels();
+}
+
+// Check if we should restore normal model selector (not locked to conversation)
+function shouldRestoreNormalSelector() {
+    // Restore normal selector if no conversation is active or we're in new chat mode
+    return currentConversationId === null;
+}
+
+// Revert model selector to conversation's original model
+function revertToConversationModel() {
+    if (!currentConversationId) return;
+    
+    // Get the conversation's original model from the conversation element
+    const conversationElement = document.getElementById(`conversation-${currentConversationId}`);
+    if (!conversationElement) return;
+    
+    const metaElement = conversationElement.querySelector('.conversation-meta');
+    if (!metaElement) return;
+    
+    // Extract model name from meta text (format: "backend-indicator model-name • date")
+    const metaText = metaElement.textContent;
+    const modelMatch = metaText.match(/[OL]\s+([^•]+)\s+•/);
+    if (modelMatch) {
+        const conversationModel = modelMatch[1].trim();
+        const modelSelect = document.getElementById('modelSelect');
+        if (modelSelect && modelSelect.value !== conversationModel) {
+            // Find the option with the conversation's model
+            const options = modelSelect.options;
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === conversationModel) {
+                    modelSelect.selectedIndex = i;
+                    console.log(`Reverted model selection to conversation model: ${conversationModel}`);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Check if a model is available in any backend
+function isModelAvailableInAnyBackend(modelName) {
+    // This will be populated when we load models with backend info
+    if (window.allAvailableModels) {
+        return window.allAvailableModels.includes(modelName);
+    }
+    return false;
+}
+
+// Deselect current conversation and return to main screen
+function deselectConversation() {
+    if (currentConversationId === null) {
+        return; // Already in main screen
+    }
+    
+    currentConversationId = null;
+    
+    // Show welcome message
+    document.getElementById('chatContainer').innerHTML = `
+        <div class="no-conversation">
+            <h2>Welcome to chat-o-llama</h2>
+            <p>Create a new chat to get started</p>
+        </div>
+    `;
+    
+    // Hide input container
+    document.getElementById('inputContainer').style.display = 'none';
+    
+    // Update title
+    document.getElementById('chatTitle').textContent = 'Select a conversation';
+    
+    // Remove active class from all conversations
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Restore model selector to normal state
+    restoreModelSelector();
+}
+
 // Generate interesting chat names
 const chatNamePrefixes = [
     "Creative", "Brilliant", "Curious", "Insightful", "Clever", "Wise", "Deep", "Quick",
@@ -264,6 +354,7 @@ async function init() {
 
     // Load user preferences
     loadCancellationPreferences();
+    loadSidebarState();
 
     // Initialize markdown parser
     initializeMarked();
@@ -292,8 +383,18 @@ async function loadModels() {
 
         const data = await response.json();
         availableModels = data.models || [];
+        
+        // Store all available models globally for model availability checking
+        window.allAvailableModels = data.all_models || [];
+        
+        // Store backend-specific models for reference
+        window.backendModels = data.backends || {};
 
         const modelSelect = document.getElementById('modelSelect');
+        
+        // Always keep model selector enabled
+        modelSelect.disabled = false;
+        modelSelect.title = '';
         modelSelect.innerHTML = '';
 
         if (availableModels.length === 0) {
@@ -315,17 +416,23 @@ async function loadModels() {
             // Add available models
             availableModels.forEach(model => {
                 const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
+                const modelName = typeof model === 'string' ? model : model.name;
+                option.value = modelName;
+                option.textContent = modelName;
                 modelSelect.appendChild(option);
             });
 
-            // Auto-select first model if available
-            if (availableModels.length > 0) {
+            // Auto-select first model if available and no conversation is active
+            if (availableModels.length > 0 && currentConversationId === null) {
                 modelSelect.selectedIndex = 1; // Skip the "Select a model..." option
             }
 
             console.log(`Loaded ${availableModels.length} models:`, availableModels);
+        }
+        
+        // If a conversation is active, validate its model availability
+        if (currentConversationId !== null) {
+            checkConversationModelAvailability();
         }
     } catch (error) {
         console.error('Error loading models:', error);
@@ -346,6 +453,35 @@ async function loadModels() {
                 'Make sure Ollama is running and has models installed.'
             );
         }, 100);
+    }
+}
+
+// Check if current conversation's model is available
+function checkConversationModelAvailability() {
+    if (!currentConversationId) return;
+    
+    // Get the conversation's model from the conversation element
+    const conversationElement = document.getElementById(`conversation-${currentConversationId}`);
+    if (!conversationElement) return;
+    
+    const metaElement = conversationElement.querySelector('.conversation-meta');
+    if (!metaElement) return;
+    
+    // Extract model name from meta text
+    const metaText = metaElement.textContent;
+    const modelMatch = metaText.match(/[OL]\s+([^•]+)\s+•/);
+    if (modelMatch) {
+        const conversationModel = modelMatch[1].trim();
+        
+        // Check if model is available in any backend
+        if (!isModelAvailableInAnyBackend(conversationModel)) {
+            console.log(`Conversation model '${conversationModel}' is not available in any backend - disabling chatbox`);
+            disableChatbox(`Model '${conversationModel}' is not available in any backend`);
+            return;
+        }
+        
+        // Model is available, enable chatbox
+        enableChatbox();
     }
 }
 
@@ -450,6 +586,20 @@ function updateBackendUI(hasError = false) {
             backendOptions.appendChild(optionDiv);
         });
     }
+}
+
+// Check if a model is available in any backend
+function checkModelAvailability(modelName) {
+    // Use all available models from all backends, not just the current active backend
+    if (!window.allAvailableModels || window.allAvailableModels.length === 0) {
+        return false;
+    }
+    
+    // Check if the model exists in the all models list (across all backends)
+    return window.allAvailableModels.some(model => {
+        const availableModelName = typeof model === 'string' ? model : model.name;
+        return availableModelName === modelName;
+    });
 }
 
 // Toggle backend dropdown visibility
@@ -658,6 +808,17 @@ async function loadConversations() {
             
             // Add backend-specific class for styling
             div.classList.add(`backend-${backendType}`);
+            
+            // Check if model is available
+            const isModelAvailable = checkModelAvailability(conv.model);
+            if (!isModelAvailable) {
+                div.classList.add('model-unavailable');
+            }
+            
+            // Restore active state if this is the current conversation
+            if (currentConversationId && conv.id === currentConversationId) {
+                div.classList.add('active');
+            }
 
             div.innerHTML = `
                 <div class="conversation-title" data-conv-id="${conv.id}" onclick="event.stopPropagation();" ondblclick="startRename(${conv.id})">${escapeHtml(conv.title)}</div>
@@ -808,6 +969,15 @@ function insertToolUsage(toolName, serverId) {
 
 // Create new chat
 async function createNewChat() {
+    // Clear current conversation to enable model selector
+    currentConversationId = null;
+    
+    // First, ensure model selector is in normal state (in case it was locked from previous conversation)
+    restoreModelSelector();
+    
+    // Wait a moment for the model selector to be populated
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const selectedModel = document.getElementById('modelSelect').value;
     if (!selectedModel || availableModels.length === 0) {
         alert('Please select a model first. Make sure the current backend has models available.');
@@ -842,7 +1012,9 @@ async function loadConversation(conversationId) {
 
         // Update UI
         document.getElementById('chatTitle').textContent = data.conversation.title;
-        document.getElementById('inputContainer').style.display = 'flex';
+        
+        // Enable chatbox by default (this will also show it), will be disabled later if model is unavailable
+        enableChatbox();
 
         // Check if conversation backend matches current active backend
         const conversationBackend = data.conversation.backend_type || 'ollama';
@@ -865,22 +1037,46 @@ async function loadConversation(conversationId) {
             }
         }
 
-        // Restore the model selection for this conversation
-        const modelSelect = document.getElementById('modelSelect');
-        if (data.conversation.model && modelSelect) {
-            // Check if the model is available in the current model list
-            const modelExists = Array.from(modelSelect.options).some(option => option.value === data.conversation.model);
-            if (modelExists) {
-                modelSelect.value = data.conversation.model;
+        // Load all available models but select the conversation's model
+        await loadModels();
+        
+        // Check if conversation model is available
+        const conversationModel = data.conversation.model;
+        if (conversationModel) {
+            // Check if model is available in any backend
+            if (!isModelAvailableInAnyBackend(conversationModel)) {
+                console.log(`Conversation model '${conversationModel}' is not available - disabling chatbox`);
+                disableChatbox(`Model '${conversationModel}' is not available in any backend`);
             } else {
-                console.warn(`Model ${data.conversation.model} not available in current backend, keeping current selection`);
-                // Show notification about model unavailability
-                setTimeout(() => {
-                    showBackendSwitchNotification(
-                        `⚠️ Model "${data.conversation.model}" not available. Please select an available model.`,
-                        'warning'
-                    );
-                }, 1500);
+                // Model is available, enable chatbox
+                enableChatbox();
+            }
+            
+            // Set the conversation's model in the dropdown
+            const modelSelect = document.getElementById('modelSelect');
+            if (modelSelect) {
+                // Find and select the conversation's model
+                const options = modelSelect.options;
+                let modelFound = false;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].value === conversationModel) {
+                        modelSelect.selectedIndex = i;
+                        modelFound = true;
+                        break;
+                    }
+                }
+                
+                // If model not found in dropdown, add it as an option
+                if (!modelFound) {
+                    const conversationModelOption = document.createElement('option');
+                    conversationModelOption.value = conversationModel;
+                    conversationModelOption.textContent = `${conversationModel} (Unavailable)`;
+                    conversationModelOption.selected = true;
+                    conversationModelOption.disabled = true;
+                    modelSelect.appendChild(conversationModelOption);
+                }
+                
+                console.log(`Set model selection to conversation's model: ${conversationModel}`);
             }
         }
 
@@ -1414,6 +1610,9 @@ async function sendMessage() {
         alert('Please select a model first.');
         return;
     }
+    
+    // Revert to conversation's original model before sending
+    revertToConversationModel();
 
     // Create new AbortController for this request
     currentAbortController = new AbortController();
@@ -1631,6 +1830,9 @@ async function deleteConversation(conversationId) {
             `;
             document.getElementById('inputContainer').style.display = 'none';
             document.getElementById('chatTitle').textContent = 'Select a conversation';
+            
+            // Restore model selector to normal state
+            restoreModelSelector();
         }
 
         await loadConversations();
@@ -1741,6 +1943,75 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Sidebar toggle functionality
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+    
+    // Store preference in localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+}
+
+// Load sidebar state from localStorage
+function loadSidebarState() {
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (isCollapsed) {
+        document.getElementById('sidebar').classList.add('collapsed');
+    }
+}
+
+// Model availability checking functions
+function isModelAvailable(modelName) {
+    // If no models are loaded yet, assume the model is available to avoid false negatives
+    if (!availableModels || availableModels.length === 0) {
+        return true;
+    }
+    
+    // Check if availableModels contains objects or strings
+    return availableModels.some(model => {
+        if (typeof model === 'string') {
+            return model === modelName;
+        } else if (typeof model === 'object' && model.name) {
+            return model.name === modelName;
+        }
+        return false;
+    });
+}
+
+function disableChatbox(reason = 'Model not available') {
+    const inputContainer = document.getElementById('inputContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    if (inputContainer && messageInput && sendBtn) {
+        inputContainer.classList.add('disabled');
+        messageInput.disabled = true;
+        messageInput.placeholder = reason;
+        sendBtn.disabled = true;
+        sendBtn.classList.add('disabled');
+    }
+}
+
+function enableChatbox() {
+    const inputContainer = document.getElementById('inputContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    if (inputContainer && messageInput && sendBtn) {
+        // Ensure input container is visible
+        inputContainer.style.display = 'flex';
+        inputContainer.classList.remove('disabled');
+        messageInput.disabled = false;
+        messageInput.placeholder = 'Type your message...';
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('disabled');
+    }
+}
+
+// Removed refreshConversationModelAvailability function - it was causing inconsistent behavior
+// Model availability is now only checked when actually loading a conversation
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Hide search results when clicking outside
@@ -1787,6 +2058,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 showCancellationNotification('Double-tap detected - cancelling request');
             }
             lastTap = currentTime;
+        });
+    }
+    
+    // Add model selection change handler
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.addEventListener('change', function(e) {
+            const selectedModel = e.target.value;
+            
+            // If we're in a conversation that was created with a non-existent model,
+            // don't enable the chatbox even if the user selects a different model
+            if (currentConversationId) {
+                const conversationElement = document.getElementById(`conversation-${currentConversationId}`);
+                if (conversationElement) {
+                    const metaElement = conversationElement.querySelector('.conversation-meta');
+                    if (metaElement) {
+                        // Extract the original conversation model
+                        const metaText = metaElement.textContent;
+                        const modelMatch = metaText.match(/[OL]\s+([^•]+)\s+•/);
+                        if (modelMatch) {
+                            const conversationModel = modelMatch[1].trim();
+                            // If conversation's original model is not available, keep chatbox disabled
+                            if (!isModelAvailableInAnyBackend(conversationModel)) {
+                                disableChatbox(`Model '${conversationModel}' is not available in any backend`);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Normal model selection logic for new conversations or valid conversations
+            if (selectedModel && isModelAvailable(selectedModel)) {
+                enableChatbox();
+            } else if (!selectedModel) {
+                disableChatbox('Please select a model');
+            }
+        });
+    }
+    
+    // Add input focus handler to revert to conversation model
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('focus', function() {
+            if (currentConversationId) {
+                revertToConversationModel();
+            }
+        });
+        
+        messageInput.addEventListener('click', function() {
+            if (currentConversationId) {
+                revertToConversationModel();
+            }
         });
     }
 });

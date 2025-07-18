@@ -87,6 +87,13 @@ Thinking styling
 
 </details>
 
+## 🆕 What's new in v2.1.0
+
+- ✅ Collapsible Sidebar with Llama Icon
+- ✅ Enhanced Chat Selection Identification
+- ✅ Disable Chatbox for Unavailable Models
+- ✅ Model Dropdown Validation Bug Fix
+
 ## 🔧 Troubleshooting
 
 **Common issues:**

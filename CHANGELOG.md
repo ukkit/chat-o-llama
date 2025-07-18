@@ -4,11 +4,21 @@ This file tracks completed features, major milestones, and release notes for Cha
 
 ## 🚀 Release Notes
 
-### v1.1.0 - Multi-Backend & Compression Support (In Development)
-**Target Release**: Q1 2025  
-**Branch**: `feature/llamacpp-integration`
+### v2.1.0 - Multi-Backend & Compression Support (In Development)
+**Target Release**: 18-07-2025
+
+**Improvements**:
+
+- ✅ Collapsible Sidebar with Llama Icon
+- ✅ Enhanced Chat Selection Identification
+- ✅ Disable Chatbox for Unavailable Models
+- ✅ Model Dropdown Validation Bug Fix
+
+### v2.0.0 - Multi-Backend & Compression Support (In Development)
+**Target Release**: 17-07-2025
 
 **Major Features**:
+
 - ✅ llama.cpp Backend Integration with Ollama fallback
 - ✅ Context Compression System (50-70% token reduction)
 - ✅ Multi-Backend UI with Real-time Status Indicators
@@ -29,7 +39,7 @@ This file tracks completed features, major milestones, and release notes for Cha
 - Backward compatibility maintained
 
 ### v1.0.0 - Initial Release (Baseline)
-**Release Date**: 2024-12-31  
+**Release Date**: 2024-12-31
 **Branch**: `main`
 
 **Core Features**:
@@ -214,7 +224,7 @@ This file tracks completed features, major milestones, and release notes for Cha
 - ✅ Created comprehensive interface compliance test framework
 - ✅ Tested abstract interface cannot be instantiated directly
 - ✅ Validated Ollama client implements all abstract methods correctly
-- ✅ Validated LlamaCpp client implements all abstract methods correctly  
+- ✅ Validated LlamaCpp client implements all abstract methods correctly
 - ✅ Tested method signature compliance for both backends
 - ✅ Verified response format standardization across backends
 - ✅ Tested error handling consistency across implementations
@@ -294,6 +304,51 @@ This file tracks completed features, major milestones, and release notes for Cha
 - ✅ Enhanced active chat visual feedback with green left border instead of dot indicator
 - ✅ Improved user experience with more engaging chat names like "Creative Discussion", "Brilliant Quest"
 
+### 🎯 Recent UI Enhancements - **COMPLETED** ✅
+
+**Priority: High - User Experience Improvements**
+
+**Enhanced Chat Selection Identification** ✅ **COMPLETED** (2025-01-17)
+- ✅ Improved visual indicators for selected/active chats with enhanced hover states
+- ✅ Added smooth transitions and better identification for selected conversations
+- ✅ Fixed duplicate CSS rules and improved active state indicators
+- ✅ Enhanced user navigation with clearer interface feedback
+- ✅ Implemented box shadows and improved border visibility for active chats
+- ✅ Added transform effects for better visual feedback on selection
+
+**Disable Chatbox for Unavailable Models** ✅ **COMPLETED** (2025-01-17)
+- ✅ Implemented model availability checking functions (isModelAvailable, disableChatbox, enableChatbox)
+- ✅ Added UI state management for disabled chatbox with visual indicators
+- ✅ Created visual indicators in sidebar for unavailable models (red borders, opacity changes)
+- ✅ Enhanced loadConversation function with model validation
+- ✅ Added model selection handlers for automatic re-enabling when valid models are selected
+- ✅ Implemented warning messages and disabled state styling for better user feedback
+- ✅ Added automatic chatbox enabling when switching to available models
+
+**Collapsible Sidebar with Llama Icon** ✅ **COMPLETED** (2025-01-17)
+- ✅ Enhanced collapsed sidebar with aesthetic llama icon display
+- ✅ Added app-title-collapsed element showing 🦙 icon when sidebar is collapsed
+- ✅ Implemented smooth CSS transitions for sidebar collapse/expand states
+- ✅ Added proper styling for collapsed state with icon-only display
+- ✅ Maintained sidebar toggle functionality with improved visual appeal
+- ✅ Fixed animation preferences by removing bouncing effects per user request
+
+**Model Dropdown Validation Bug Fix** ✅ **COMPLETED** (2025-01-18)
+- ✅ Fixed critical bug where model dropdown selection could bypass validation for conversations with non-existent models
+- ✅ Added validation logic in model selection change handler to check original conversation model availability
+- ✅ Implemented extraction of original conversation model from UI metadata for proper validation
+- ✅ Prevented enabling chatbox when changing model dropdown for conversations with unavailable models
+- ✅ Maintained normal behavior for new conversations and conversations with valid models
+- ✅ Resolved HTTP 404 errors when users attempted to send messages after changing model dropdown
+
+**Enhanced Model Availability Indicators** ✅ **COMPLETED** (2025-01-18)
+- ✅ Fixed model availability checking to work across all backends instead of just current active backend
+- ✅ Updated checkModelAvailability() function to use all_models from API (includes all backends)
+- ✅ Prevented conversations from being marked as unavailable when they use different backends
+- ✅ Enhanced visual indicators to only show red styling for truly unavailable models
+- ✅ Improved user experience by distinguishing between backend-specific and unavailable models
+- ✅ Maintained existing CSS styling for model-unavailable class with red borders and reduced opacity
+
 ### 🎯 Context Compression Implementation - **COMPLETED** ✅
 
 **Priority: High - Performance Optimization**
@@ -343,7 +398,7 @@ This file tracks completed features, major milestones, and release notes for Cha
 
 ### **Completed Major Phases:**
 - **Phase 1**: Backend Abstraction Layer ✅ **COMPLETED** (T001-T004)
-- **Phase 2**: Backend Implementation ✅ **COMPLETED** (T005-T009)  
+- **Phase 2**: Backend Implementation ✅ **COMPLETED** (T005-T009)
 - **Phase 3**: API Integration ✅ **COMPLETED** (T010 ✅, T011 ✅, T012 ✅)
 - **Phase 4**: Testing & Validation ✅ **COMPLETED** (T013 ✅, T021 ✅, T022 ✅)
 - **Phase 5**: Frontend & Script Updates ✅ **COMPLETED** (T014-T020 ✅)

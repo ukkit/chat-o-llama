@@ -15,7 +15,7 @@ mkdir -p "$LOG_DIR"
 CURRENT_DATETIME=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="$LOG_DIR/chat-o-llama_$CURRENT_DATETIME.log"
 
-DEFAULT_PORT=3000
+DEFAULT_PORT=3113
 
 # Colors for output
 RED='\033[0;31m'
@@ -482,7 +482,7 @@ stop_app() {
     fi
 
     # Method 3: Check specific ports and kill processes using them
-    for port in 3000 8080 5000 8000; do
+    for port in 3113 3000 8080 5000 8000; do
         local port_pid=$(lsof -ti :$port 2>/dev/null)
         if [ -n "$port_pid" ]; then
             # Check if it's a Python process
@@ -528,7 +528,7 @@ force_stop() {
     fi
 
     # Kill processes on common ports
-    for port in 3000 8080 5000 8000 9000; do
+    for port in 3113 3000 8080 5000 8000 9000; do
         local port_pid=$(lsof -ti :$port 2>/dev/null)
         if [ -n "$port_pid" ]; then
             local cmd=$(ps -p $port_pid -o comm= 2>/dev/null)

@@ -16,9 +16,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/5.1.1/marked.min.js"></script>
 </head>
 <body>
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="app-title">chat-o-llama 🦙</div>
+            <div class="app-title-collapsed" id="appTitleCollapsed">🦙</div>
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">‹</button>
             <button class="new-chat-btn" onclick="createNewChat()">+ New Chat</button>
             
             <!-- Consolidated backend selector with status -->
@@ -51,7 +53,7 @@
 
     <div class="main-content">
         <div class="chat-header">
-            <div class="chat-title" id="chatTitle">Select a conversation</div>
+            <div class="chat-title" id="chatTitle" onclick="deselectConversation()" style="cursor: pointer;" title="Click to return to main screen">Select a conversation</div>
             <div style="position: relative;">
                 <input type="text" class="search-box" id="searchBox" placeholder="Search conversations..." onkeyup="searchConversations(event)">
                 <div class="search-results" id="searchResults"></div>
