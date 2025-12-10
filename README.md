@@ -1,3 +1,5 @@
+# ⚠️ This Repository is ARCHIVED
+
 # Chat-O-Llama 🦙
 
 ### ⚡Best of Both Worlds: Now supporting Ollama AND Llama.cpp - switch backends on the fly!
