@@ -10,7 +10,7 @@ from services.llm_factory import get_active_backend, get_llm_factory
 from services.conversation_manager import ConversationManager
 from services.chat_context import build_chat_context
 from services.context_compressor import get_context_compressor
-from services.mcp_manager import MCPManager
+from services.mcp_manager import get_mcp_manager
 from services.request_manager import get_request_manager
 from utils.token_estimation import estimate_tokens
 from config import get_config
@@ -21,70 +21,44 @@ OLLAMA_API_URL = os.getenv('OLLAMA_API_URL', 'http://localhost:11434')
 
 chat_bp = Blueprint('chat', __name__)
 
-# Initialize MCP Manager for this module
-mcp_manager = MCPManager()
-
 
 def detect_and_execute_mcp_tools(message: str) -> List[Dict[str, Any]]:
     """Detect and execute MCP tools based on user message."""
     tool_results = []
-    
-    if not mcp_manager.enabled:
+    mcp = get_mcp_manager()
+
+    if not mcp.enabled:
         return tool_results
-    
-    # Simple pattern matching for tool detection
-    # This is a basic implementation - in production you might want more sophisticated NLP
+
     message_lower = message.lower()
-    
-    # Check for file operations
+
     if any(keyword in message_lower for keyword in ['read file', 'write file', 'list files', 'file content']):
-        # Try to execute file system tools if available
-        for server_id, connection_info in mcp_manager.connections.items():
+        for server_id, connection_info in mcp.connections.items():
             if connection_info.get('capabilities') and connection_info['capabilities'].get('tools'):
                 for tool in connection_info['capabilities']['tools']:
                     if 'file' in tool['name'].lower() or 'read' in tool['name'].lower():
-                        # Extract file path from message (basic implementation)
                         file_matches = re.findall(r'["\']([^"\']+)["\']', message)
                         if file_matches:
                             try:
-                                result = mcp_manager.sync_execute_tool(
-                                    server_id, 
-                                    tool['name'], 
-                                    {'path': file_matches[0]}
-                                )
+                                result = mcp.sync_execute_tool(server_id, tool['name'], {'path': file_matches[0]})
                                 if result and result.get('success'):
-                                    tool_results.append({
-                                        'tool': tool['name'],
-                                        'server': server_id,
-                                        'result': result
-                                    })
+                                    tool_results.append({'tool': tool['name'], 'server': server_id, 'result': result})
                             except Exception as e:
                                 logger.error(f"Tool execution failed: {e}")
-    
-    # Check for memory operations
+
     if any(keyword in message_lower for keyword in ['remember', 'recall', 'store', 'save information']):
-        # Try to execute memory tools if available
-        for server_id, connection_info in mcp_manager.connections.items():
+        for server_id, connection_info in mcp.connections.items():
             if connection_info.get('capabilities') and connection_info['capabilities'].get('tools'):
                 for tool in connection_info['capabilities']['tools']:
                     if 'memory' in tool['name'].lower() or 'store' in tool['name'].lower():
                         try:
-                            # Extract what to remember/recall
                             content = message.replace('remember', '').replace('recall', '').strip()
-                            result = mcp_manager.sync_execute_tool(
-                                server_id,
-                                tool['name'],
-                                {'content': content}
-                            )
+                            result = mcp.sync_execute_tool(server_id, tool['name'], {'content': content})
                             if result and result.get('success'):
-                                tool_results.append({
-                                    'tool': tool['name'],
-                                    'server': server_id,
-                                    'result': result
-                                })
+                                tool_results.append({'tool': tool['name'], 'server': server_id, 'result': result})
                         except Exception as e:
                             logger.error(f"Memory tool execution failed: {e}")
-    
+
     return tool_results
 
 
@@ -261,7 +235,7 @@ def api_chat():
     mcp_context = ""
     tool_results = []
     
-    if mcp_manager.enabled:
+    if get_mcp_manager().enabled:
         # Simple tool detection - look for tool invocation patterns
         tool_results = detect_and_execute_mcp_tools(message)
         if tool_results:
@@ -348,7 +322,7 @@ def api_chat():
             'message_count': context_metadata.get('message_count', 0)
         },
         'mcp_tools': {
-            'enabled': mcp_manager.enabled,
+            'enabled': get_mcp_manager().enabled,
             'tools_executed': len(tool_results),
             'results': tool_results if tool_results else []
         }

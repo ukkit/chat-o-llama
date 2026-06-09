@@ -330,3 +330,14 @@ class MCPManager:
                 for server_id, info in self.connections.items()
             }
         }
+
+
+_mcp_manager = None
+
+
+def get_mcp_manager() -> 'MCPManager':
+    """Return the shared MCPManager instance, creating it on first call."""
+    global _mcp_manager
+    if _mcp_manager is None:
+        _mcp_manager = MCPManager()
+    return _mcp_manager

@@ -90,7 +90,7 @@ Thinking styling
 
 ## 🆕 What's new
 
-**2026.0609.1150**
+**2026.0609.1206**
 - Context compression decoupled from message storage — `ConversationManager` returns raw messages only; compression is an explicit step via `build_chat_context()`
 - `ContextCompressor` is now the single entry point for all compression operations
 - Removed `mcp` from required dependencies (install separately if needed)

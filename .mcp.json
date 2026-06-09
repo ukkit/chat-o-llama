@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "memcord": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/neeraj/git/memcord",
+        "run",
+        "memcord"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/neeraj/git/memcord/src",
+        "MEMCORD_ENABLE_ADVANCED": "false"
+      }
+    }
+  }
+}

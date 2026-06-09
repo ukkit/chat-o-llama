@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 from services.conversation_manager import ConversationManager
-from services.context_compressor import get_context_compressor
+from config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +27,17 @@ def build_chat_context(
         if conversation:
             model_name = conversation['model']
 
-    compressor = get_context_compressor()
-    compressed_messages, compression_metadata = compressor.compress_context(
-        messages=messages,
-        conversation_id=conversation_id,
-        model_name=model_name,
-        max_context_tokens=max_tokens,
-    )
+    compression_cfg = get_config().get('compression', {})
+    if compression_cfg.get('enabled', False):
+        from services.context_compressor import get_context_compressor
+        compressed_messages, compression_metadata = get_context_compressor().compress_context(
+            messages=messages,
+            conversation_id=conversation_id,
+            model_name=model_name,
+            max_context_tokens=max_tokens,
+        )
+    else:
+        compressed_messages, compression_metadata = messages, None
 
     formatted = []
     for msg in compressed_messages:

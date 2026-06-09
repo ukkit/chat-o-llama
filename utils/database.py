@@ -4,12 +4,12 @@ import os
 import sqlite3
 import logging
 from flask import g
+from config import get_config
 
 logger = logging.getLogger(__name__)
 
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'ollama_chat.db')
 
-# Enhanced database schema with metrics tracking, backend information, and compression analytics
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,81 +33,9 @@ CREATE TABLE IF NOT EXISTS messages (
     FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS conversation_compression_stats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id INTEGER NOT NULL,
-    compression_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    original_token_count INTEGER NOT NULL,
-    compressed_token_count INTEGER NOT NULL,
-    compression_ratio REAL NOT NULL,
-    compression_strategy TEXT NOT NULL,
-    compression_time_ms INTEGER,
-    quality_score REAL,
-    messages_compressed INTEGER NOT NULL,
-    messages_preserved INTEGER NOT NULL,
-    triggered_by TEXT,
-    compression_config TEXT,
-    effectiveness_score REAL,
-    FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS compression_cache (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    conversation_id INTEGER NOT NULL,
-    context_hash TEXT NOT NULL,
-    compressed_context TEXT NOT NULL,
-    original_token_count INTEGER NOT NULL,
-    compressed_token_count INTEGER NOT NULL,
-    compression_strategy TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL,
-    access_count INTEGER DEFAULT 0,
-    last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS compression_performance_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    compression_strategy TEXT NOT NULL,
-    operation_type TEXT NOT NULL,
-    duration_ms INTEGER NOT NULL,
-    input_token_count INTEGER NOT NULL,
-    output_token_count INTEGER,
-    compression_ratio REAL,
-    quality_score REAL,
-    success BOOLEAN NOT NULL,
-    error_message TEXT,
-    model_name TEXT,
-    backend_type TEXT
-);
-
-CREATE TABLE IF NOT EXISTS message_importance_scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    message_id INTEGER NOT NULL,
-    importance_score REAL NOT NULL,
-    content_type TEXT,
-    scoring_algorithm TEXT NOT NULL,
-    calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    position_from_end INTEGER,
-    contains_code BOOLEAN DEFAULT FALSE,
-    is_question BOOLEAN DEFAULT FALSE,
-    technical_content BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (message_id) REFERENCES messages (id) ON DELETE CASCADE
-);
-
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
-CREATE INDEX IF NOT EXISTS idx_compression_stats_conversation ON conversation_compression_stats(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_compression_stats_timestamp ON conversation_compression_stats(compression_timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_compression_cache_conversation ON compression_cache(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_compression_cache_hash ON compression_cache(context_hash);
-CREATE INDEX IF NOT EXISTS idx_compression_cache_expires ON compression_cache(expires_at);
-CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON compression_performance_metrics(timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_performance_metrics_strategy ON compression_performance_metrics(compression_strategy);
-CREATE INDEX IF NOT EXISTS idx_importance_scores_message ON message_importance_scores(message_id);
-CREATE INDEX IF NOT EXISTS idx_importance_scores_score ON message_importance_scores(importance_score DESC);
 '''
 
 
@@ -357,10 +285,9 @@ def init_db():
         conn.executescript(SCHEMA)
         conn.commit()
     logger.info(f"Database initialized: {DATABASE_PATH}")
-    
-    # Run migrations to add any missing columns or tables
+
     migrate_add_backend_type()
-    migrate_add_compression_tables()
-    
-    # Clean up expired cache entries
-    cleanup_expired_compression_cache()
+
+    if get_config().get('compression', {}).get('enabled', False):
+        migrate_add_compression_tables()
+        cleanup_expired_compression_cache()
