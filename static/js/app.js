@@ -36,6 +36,9 @@ async function loadTimeoutFromConfig() {
         if (backendResponse.ok && configResponse.ok) {
             const backendStatus = await backendResponse.json();
             const config = await configResponse.json();
+
+            const versionEl = document.getElementById('appVersion');
+            if (versionEl && config.version) versionEl.textContent = config.version;
             
             const activeBackend = backendStatus.active_backend;
             

@@ -3,10 +3,13 @@
 import os
 import re
 import logging
+from pathlib import Path
 from typing import Dict, List, Any
 from flask import request, jsonify, Blueprint
 from services.llm_factory import get_active_backend, get_llm_factory
 from services.conversation_manager import ConversationManager
+from services.chat_context import build_chat_context
+from services.context_compressor import get_context_compressor
 from services.mcp_manager import MCPManager
 from services.request_manager import get_request_manager
 from utils.token_estimation import estimate_tokens
@@ -180,7 +183,12 @@ def api_models():
 def api_config():
     """Get current configuration (excluding sensitive data)."""
     config = get_config()
+    try:
+        version = (Path(__file__).parent.parent / 'VERSION').read_text().strip()
+    except OSError:
+        version = 'unknown'
     config_display = {
+        'version': version,
         'timeouts': config['timeouts'],
         'model_options': config['model_options'],
         'performance': config['performance'],
@@ -242,8 +250,7 @@ def api_chat():
     config = get_config()
     max_context_tokens = config.get('model_options', {}).get('num_ctx', 4096)
     
-    # Use compression-enabled context preparation
-    formatted_messages, context_metadata = ConversationManager.prepare_context_for_llm(
+    formatted_messages, context_metadata = build_chat_context(
         conversation_id, conversation_model, max_context_tokens
     )
     
@@ -353,7 +360,8 @@ def api_compression_recommendations(conversation_id):
     """Get compression recommendations for a conversation."""
     try:
         model = request.args.get('model', 'llama3.2')
-        recommendations = ConversationManager.get_compression_recommendations(conversation_id, model)
+        messages = ConversationManager.get_messages(conversation_id)
+        recommendations = get_context_compressor().get_compression_recommendations(messages, model)
         return jsonify(recommendations)
     except Exception as e:
         logger.error(f"Error getting compression recommendations: {e}")
@@ -364,7 +372,8 @@ def api_compression_recommendations(conversation_id):
 def api_compression_analyze(conversation_id):
     """Analyze message importance in a conversation."""
     try:
-        analysis = ConversationManager.analyze_conversation_importance(conversation_id)
+        messages = ConversationManager.get_messages(conversation_id)
+        analysis = get_context_compressor().analyze_importance(messages)
         return jsonify(analysis)
     except Exception as e:
         logger.error(f"Error analyzing conversation importance: {e}")
@@ -375,7 +384,7 @@ def api_compression_analyze(conversation_id):
 def api_compression_stats(conversation_id):
     """Get compression statistics for a conversation."""
     try:
-        stats = ConversationManager.get_conversation_compression_stats(conversation_id)
+        stats = get_context_compressor().get_compression_status(conversation_id)
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Error getting compression stats: {e}")
@@ -388,26 +397,23 @@ def api_force_compression(conversation_id):
     try:
         data = request.get_json() or {}
         model = data.get('model', 'llama3.2')
-        strategy = data.get('strategy')  # Optional: force specific strategy
         max_tokens = data.get('max_tokens', 4096)
-        
-        # Get messages with forced compression
-        result = ConversationManager.get_messages(
-            conversation_id,
-            include_compression_metadata=True,
-            compress_context={
-                'force': True,
-                'model_name': model,
-                'max_tokens': max_tokens
-            }
+
+        messages = ConversationManager.get_messages(conversation_id)
+        compressed_messages, compression_metadata = get_context_compressor().compress_context(
+            messages=messages,
+            conversation_id=conversation_id,
+            model_name=model,
+            max_context_tokens=max_tokens,
+            force=True,
         )
-        
+
         return jsonify({
             'compressed': True,
-            'message_count': len(result['messages']),
-            'compression_metadata': result['compression_metadata']
+            'message_count': len(compressed_messages),
+            'compression_metadata': compression_metadata,
         })
-        
+
     except Exception as e:
         logger.error(f"Error forcing compression: {e}")
         return jsonify({'error': str(e)}), 500
@@ -417,9 +423,7 @@ def api_force_compression(conversation_id):
 def api_compression_status():
     """Get global compression status and configuration."""
     try:
-        from services.context_compressor import get_context_compressor
-        compressor = get_context_compressor()
-        status = compressor.get_compression_status()
+        status = get_context_compressor().get_compression_status()
         return jsonify(status)
     except Exception as e:
         logger.error(f"Error getting compression status: {e}")

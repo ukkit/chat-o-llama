@@ -1321,3 +1321,16 @@ body {
         max-width: 350px;
     }
 }
+
+.sidebar-footer {
+    padding: 8px 12px;
+    border-top: 1px solid #30363d;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.app-version {
+    font-size: 0.68rem;
+    color: #484f58;
+    font-family: monospace;
+}

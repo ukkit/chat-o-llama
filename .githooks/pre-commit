@@ -1,0 +1,14 @@
+#!/bin/bash
+VERSION=$(date +"%Y.%m%d.%H%M")
+echo "$VERSION" > VERSION
+
+# Update the most recent version entry in README.md What's new section
+python3 -c "
+import re, sys
+version = sys.argv[1]
+content = open('README.md').read()
+updated = re.sub(r'\*\*\d{4}\.\d{4}\.\d{4}\*\*', f'**{version}**', content, count=1)
+open('README.md', 'w').write(updated)
+" "$VERSION"
+
+git add VERSION README.md

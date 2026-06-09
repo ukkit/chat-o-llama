@@ -87,19 +87,6 @@
     "enabled": false,
     "auto_connect": true,
     "servers": {
-      "memcord": {
-        "command": "uv",
-        "args": [
-          "--directory",
-          "/home/neeraj/git/memcord",
-          "run",
-          "memcord"
-        ],
-        "env": {
-          "PYTHONPATH": "/home/neeraj/git/memcord/src"
-        },
-        "enabled": false
-      },
       "filesystem": {
         "name": "File System Access",
         "transport": "stdio",
