@@ -90,11 +90,16 @@ Thinking styling
 
 ## 🆕 What's new
 
-**2026.0609.1206**
+**2026.0609.1208**
+- Startup time reduced from 10–40s to ~500ms — backend health checks deferred to first request
+- Compression subsystem and DB tables only initialised when `compression.enabled = true`
+- `MCPManager` reduced to one shared lazy instance; no longer created at import time
+- highlight.js, marked.js, and github-dark CSS bundled locally — UI works fully offline
+- Removed `psutil` (unused dependency)
 - Context compression decoupled from message storage — `ConversationManager` returns raw messages only; compression is an explicit step via `build_chat_context()`
 - `ContextCompressor` is now the single entry point for all compression operations
 - Removed `mcp` from required dependencies (install separately if needed)
-- Updated Flask, requests, llama-cpp-python, and psutil to current versions
+- Updated Flask, requests, and llama-cpp-python to current versions
 - Domain glossary added (`CONTEXT.md`)
 
 **2025.0718.0000** _(last semantic release: v2.1.0)_
