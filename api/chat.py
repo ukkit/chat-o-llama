@@ -3,7 +3,7 @@
 import os
 import re
 import logging
-from pathlib import Path
+from importlib.metadata import version as pkg_version, PackageNotFoundError
 from typing import Dict, List, Any
 from flask import request, jsonify, Blueprint
 from services.llm_factory import get_active_backend, get_llm_factory
@@ -158,8 +158,8 @@ def api_config():
     """Get current configuration (excluding sensitive data)."""
     config = get_config()
     try:
-        version = (Path(__file__).parent.parent / 'VERSION').read_text().strip()
-    except OSError:
+        version = pkg_version("chat-o-llama")
+    except PackageNotFoundError:
         version = 'unknown'
     config_display = {
         'version': version,

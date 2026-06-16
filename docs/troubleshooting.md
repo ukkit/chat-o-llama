@@ -34,7 +34,7 @@ Complete troubleshooting guide for chat-o-llama installation, configuration, and
 | GGUF model not found | `ls models/*.gguf` ⭐ *New* |
 | Backend switching failed | `curl http://localhost:3113/api/backend/status` ⭐ *New* |
 | Permission denied | `chmod +x chat-manager.sh` |
-| Dependencies missing | `pip install -r requirements.txt` |
+| Dependencies missing | `uv sync` or `pip install .` |
 | Virtual env not activated | `source venv/bin/activate` |
 
 ### Emergency Reset
@@ -47,7 +47,7 @@ Complete troubleshooting guide for chat-o-llama installation, configuration, and
 rm -rf venv
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 
 # Reset database (loses chat history)
 rm -f data/chat-o-llama.db
@@ -136,18 +136,17 @@ python3.11 -m venv venv  # Use specific Python version
 
 #### Dependency Installation Issues
 ```bash
-# pip install fails
-pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt --no-cache-dir
+# uv sync fails
+uv sync --no-cache
 
 # Network issues
-pip install -r requirements.txt --trusted-host pypi.org --trusted-host pypi.python.org
+pip install . --trusted-host pypi.org --trusted-host pypi.python.org
 
 # Permission issues
-pip install -r requirements.txt --user
+pip install . --user
 
 # Specific package fails
-pip install Flask==3.0.0 requests==2.31.0  # Install individually
+pip install Flask requests  # Install individually
 ```
 
 ---
@@ -196,7 +195,7 @@ pip install Flask==3.0.0
 pip install requests==2.31.0
 
 # Other import errors
-pip install -r requirements.txt --force-reinstall
+uv sync --reinstall
 ```
 
 ### Application Crashes
@@ -891,8 +890,8 @@ journalctl -u ollama -f
 # Run installer with debug output
 bash -x install.sh > install-debug.log 2>&1
 
-# Manual installation with verbose pip
-pip install -r requirements.txt -v
+# Manual installation with verbose output
+uv sync -v
 ```
 
 ### Debug Scripts
@@ -1143,7 +1142,7 @@ git reset --hard HEAD
 # Reinstall
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ./chat-manager.sh start
 ```
 

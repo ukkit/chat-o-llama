@@ -356,7 +356,7 @@ start_app() {
             print_info "Please create and activate a virtual environment first:"
             print_info "  uv venv venv (or python3 -m venv venv)"
             print_info "  source venv/bin/activate"
-            print_info "  uv sync (or pip install -r requirements.txt)"
+            print_info "  uv sync (or pip install .)"
             print_info "  $0 start"
             return 1
         fi
@@ -708,7 +708,7 @@ show_usage() {
     echo "Setup (with pip - fallback):"
     echo "  1. python3 -m venv venv"
     echo "  2. source venv/bin/activate"
-    echo "  3. pip install -r requirements.txt"
+    echo "  3. pip install ."
     echo "  4. $0 backend status  # Check backend availability"
     echo "  5. $0 start"
     echo ""

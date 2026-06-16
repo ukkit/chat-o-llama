@@ -321,24 +321,11 @@ create_virtual_env() {
 
     # Install dependencies with uv
     print_info "Installing Python dependencies with uv..."
-    if [ -f "pyproject.toml" ]; then
-        if uv sync >/dev/null 2>&1; then
-            print_success "Dependencies installed successfully with uv"
-        else
-            print_error "Failed to install dependencies with uv"
-            exit 1
-        fi
-    elif [ -f "requirements.txt" ]; then
-        if uv pip install -r requirements.txt >/dev/null 2>&1; then
-            print_success "Dependencies installed successfully with uv"
-        else
-            print_error "Failed to install dependencies with uv"
-            exit 1
-        fi
+    if uv sync >/dev/null 2>&1; then
+        print_success "Dependencies installed successfully with uv"
     else
-        # Fallback installation with uv
-        print_warning "No pyproject.toml or requirements.txt found, installing basic dependencies..."
-        uv pip install Flask==3.0.0 requests==2.31.0 "mcp[cli]==1.1.0" >/dev/null 2>&1
+        print_error "Failed to install dependencies with uv"
+        exit 1
     fi
 }
 

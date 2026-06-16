@@ -365,9 +365,9 @@ source venv/bin/activate
 ```
 **Solution**:
 ```bash
-pip install flask requests
+uv sync
 # or
-pip install -r requirements.txt
+pip install .
 ```
 
 #### 4. app.py Not Found
