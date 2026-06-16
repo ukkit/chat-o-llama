@@ -352,13 +352,29 @@ start_app() {
                 return 1
             fi
         else
-            print_error "No virtual environment found!"
-            print_info "Please create and activate a virtual environment first:"
-            print_info "  uv venv venv (or python3 -m venv venv)"
-            print_info "  source venv/bin/activate"
-            print_info "  uv sync (or pip install .)"
-            print_info "  $0 start"
-            return 1
+            print_info "No virtual environment found, creating one..."
+            if command -v uv &> /dev/null; then
+                uv venv "$SCRIPT_DIR/venv" 2>&1 | while read line; do print_info "$line"; done
+            else
+                python3 -m venv "$SCRIPT_DIR/venv"
+            fi
+            if [ ! -f "$SCRIPT_DIR/venv/bin/activate" ]; then
+                print_error "Failed to create virtual environment"
+                return 1
+            fi
+            source "$SCRIPT_DIR/venv/bin/activate"
+            print_status "Created and activated virtual environment: $VIRTUAL_ENV"
+            print_info "Installing dependencies..."
+            if command -v uv &> /dev/null; then
+                uv sync 2>&1 | while read line; do print_info "$line"; done
+            else
+                pip install . --quiet
+            fi
+            if [ $? -ne 0 ]; then
+                print_error "Failed to install dependencies"
+                return 1
+            fi
+            print_status "Dependencies installed successfully"
         fi
     fi
 
@@ -665,9 +681,9 @@ show_usage() {
     echo "Usage: $0 [command] [options]"
     echo ""
     echo "Prerequisites:"
-    echo "  - Virtual environment must be created manually: uv venv venv (or python3 -m venv venv)"
-    echo "  - Dependencies must be installed: uv sync (or pip install flask requests)"
-    echo "  - Virtual environment must be activated before running: source venv/bin/activate"
+    echo "  - If no virtual environment exists, one will be created automatically on first start"
+    echo "  - Dependencies are installed automatically when a new venv is created"
+    echo "  - You can also activate an existing venv manually: source venv/bin/activate"
     echo ""
     echo "Application Commands:"
     echo "  start [port]     - Start Chat-O-Llama (default port: $DEFAULT_PORT)"

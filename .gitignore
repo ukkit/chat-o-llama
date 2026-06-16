@@ -1,145 +1,49 @@
-# chat-o-llama .gitignore
-
-# Virtual Environment
+# Virtual environments
 venv/
-env/
 .venv/
-.env/
+env/
 ENV/
-env.bak/
 venv.bak/
+env.bak/
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff
-instance/
-.webassets-cache
-
-# Scrapy stuff
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
+# Package tooling
 .python-version
 
-# pipenv
-Pipfile.lock
+# Testing
+.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
+.tox/
+coverage.xml
+*.cover
 
-# PEP 582
-__pypackages__/
+# IDE
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.iml
+*.iws
+.history/
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# chat-o-llama specific files
-# =================================
-
-# Process management files
-chat-o-llama.pid   # Legacy name (just in case)
-chat-o-llama.log   # Legacy name (just in case)
-ollama_chat.pid    # Legacy name (just in case)
-ollama_chat.log    # Legacy name (just in case)
+# Process management
 process.pid
 
-# Database files
+# Database / application data
 data/
 *.db
 *.sqlite
@@ -150,160 +54,47 @@ logs/
 *.log
 *.log.*
 
-# Temporary files
+# Temp and backup files
 tmp/
 temp/
 .tmp/
-.temp/
-
-# Backup files
+*.tmp
 *.bak
 *.backup
 *~
-.DS_Store
-Thumbs.db
 
-# Editor and IDE files
-# ===================
-
-# Visual Studio Code
-.vscode/
-*.code-workspace
-
-# PyCharm
-.idea/
-*.iml
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
-*.swp
-*.swo
-*~
-
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-
-# Nano
-*.save
-
-# System files
-# ============
-
-# macOS
+# System files — macOS
 .DS_Store
 .AppleDouble
 .LSOverride
-Icon?
 ._*
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-CLAUDE.md
 
-# Windows
+# System files — Windows
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.tmp
-*.temp
 Desktop.ini
 $RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
 
-# Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-.nfs*
-
-# Docker (if used)
-# ===============
-.dockerignore
-docker-compose.override.yml
-.docker/
-
-# Node.js (if frontend gets Node components)
-# =========================================
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.eslintcache
-.yarn-integrity
-
-# Local configuration files
-# =========================
+# Secrets and local config
+.env
+.env.*
 config.local.py
 settings.local.py
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+secrets.json
+credentials.json
+api_keys.txt
 
-# SSL certificates (if any)
-# ========================
-*.crt
-*.key
-*.pem
-*.p12
-*.pfx
+# ML model files (downloaded separately)
+models/
+test_models/
+llama_models/
+model_cache/
+*.gguf
+*.bin
 
-# Backup and archive files
-# ========================
-*.tar
-*.zip
-*.gz
-*.bz2
-*.xz
-*.7z
-*.rar
-
-# IDE and editor specific
-# ======================
-.vscode/settings.json
-.vscode/tasks.json
-.vscode/launch.json
-.vscode/extensions.json
-.history/
-
-# Testing
-# =======
-.coverage
-.pytest_cache/
-.tox/
-htmlcov/
-
-# Test reports and results
-# ========================
+# Test reports and artefacts
 tests/reports/
+test_output/
+test_logs/
 *test_report*.json
 *test_results*.json
 *benchmark_report*.json
@@ -313,32 +104,12 @@ tests/reports/
 *interface_compliance*.json
 *backend_comparison*.json
 *.test.json
-test_output/
-test_logs/
-
-# Mock model files for testing
-# =============================
-test_models/
-llama_models/
-*.gguf
-*.bin
-model_cache/
 
 # Documentation builds
-# ===================
 docs/_build/
 docs/build/
 site/
 
-# Optional: Exclude uploaded files if any
-# ======================================
-uploads/
-media/
-static/uploads/
-
-# Optional: Exclude any API keys or secrets
-# ========================================
-secrets.json
-credentials.json
-*.key
-api_keys.txt
+# Local AI assistant config
+CLAUDE.md
+.claude/
