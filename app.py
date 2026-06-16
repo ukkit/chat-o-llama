@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-this'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(32)
 app.config['THREADED'] = True
 
 # Register database teardown handler

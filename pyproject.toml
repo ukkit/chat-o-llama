@@ -1,6 +1,6 @@
 [project]
 name = "chat-o-llama"
-version = "2.1.1"
+version = "2026.0616.1906"
 description = "A lightweight Flask-based web interface for Ollama AI models with persistent conversation management"
 readme = "README.md"
 license = { file = "LICENSE" }

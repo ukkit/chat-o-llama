@@ -90,6 +90,11 @@ Thinking styling
 
 ## 🆕 What's new
 
+**2026.0616.1906**
+- Secret key loaded from `SECRET_KEY` env var; falls back to `os.urandom(32)` — hardcoded placeholder removed
+- Fixed crash in `/api/chat` when request body is missing or not valid JSON
+- Fixed Ollama health check always reporting available regardless of backend reachability
+
 **2026.0609.1208**
 - Startup time reduced from 10–40s to ~500ms — backend health checks deferred to first request
 - Compression subsystem and DB tables only initialised when `compression.enabled = true`

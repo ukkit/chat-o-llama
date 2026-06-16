@@ -175,6 +175,9 @@ def api_config():
 def api_chat():
     """Send message and get response with enhanced metrics."""
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body must be valid JSON'}), 400
+
     conversation_id = data.get('conversation_id')
     message = data.get('message')
     model = data.get('model', 'llama3.2')

@@ -459,22 +459,22 @@ class OllamaAPI(LLMInterface):
                 - health_check (bool): Whether backend is healthy/reachable
         """
         try:
-            # Try to get version from Ollama API
+            # Try to get version from Ollama API; success here means backend is reachable
             version = "unknown"
+            is_available = False
             try:
                 response = requests.get(
-                    f"{self._base_url}/api/version", 
+                    f"{self._base_url}/api/version",
                     timeout=(5, 10)
                 )
                 if response.status_code == 200:
                     version_data = response.json()
                     version = version_data.get('version', 'unknown')
-            except:
+                    is_available = True
+            except Exception:
                 pass
-            
-            # Check if backend is reachable by trying to get models
-            models = self.get_models()
-            is_available = len(models) >= 0  # Even empty list means backend is reachable
+
+            models = self.get_models() if is_available else []
             
             # Determine status based on availability
             if is_available:
